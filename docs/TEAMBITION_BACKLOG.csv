@@ -1,0 +1,9 @@
+任务ID,阶段,任务名称,目标,负责人建议,优先级,验收标准,依赖
+TB-001,Phase 1,Repo launch polish,让 GitHub 首屏在 2 分钟内解释清楚价值并可运行,产品/工程,P0,README/Quickstart/License/CI 全部存在且测试通过,
+TB-002,Phase 1,Hermes plugin MVP,让 Hermes 能把跨会话事实写入 deep-memory,Hermes 工程,P0,完成插件安装说明和一个端到端 demo,TB-001
+TB-003,Phase 1,Memory benchmark v0,证明有/无 memory 的 agent 任务表现差异,研究评估,P0,至少 20 个中文/英文任务样本并输出评分脚本,TB-001
+TB-004,Phase 1,Chinese retrieval baseline,建立中文分词+embedding 的 baseline,ML/NLP,P0,中文查询召回率相对 FTS baseline 明显提升,TB-003
+TB-005,Phase 2,Conflict resolution loop,检测矛盾记忆并请求用户确认,后端,P1,同一偏好变化时能标记旧记忆并保留来源,TB-001
+TB-006,Phase 2,Memory Web UI,用户可查看/编辑/删除 agent 记忆,前端,P1,本地 WebUI 可 CRUD memory 并显示时间线,TB-001
+TB-007,Phase 3,MCP server,任何 agent 可通过 MCP 访问 memory,生态工程,P1,MCP list/search/add 工具可被 Hermes/Claude Code 调用,TB-001
+TB-008,Growth,Launch assets,制作 “你的 AI 记得你吗？” demo 视频与对比素材,增长/内容,P0,完成 1 个英文 README demo gif + 1 个中文视频脚本,TB-001

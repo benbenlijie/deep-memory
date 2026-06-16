@@ -1,0 +1,37 @@
+[project]
+name = "deep-memory"
+version = "0.1.0"
+description = "Open-source persistent memory layer for AI agents: Chinese-first, cross-session, forgetting-aware, conflict-aware."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "deep-memory contributors" }]
+keywords = ["ai-agent", "memory", "agent-memory", "llm", "sqlite", "mcp", "chinese"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = ["typer>=0.12.0", "pydantic>=2.7.0", "rich>=13.7.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "ruff>=0.6.0"]
+
+[project.scripts]
+deep-memory = "deep_memory.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
