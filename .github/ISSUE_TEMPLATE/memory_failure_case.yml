@@ -1,0 +1,56 @@
+name: Memory failure case
+about: Help us understand where your agent memory breaks
+labels: feedback, memory-case
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing a concrete memory failure. The goal is to build a better eval set and product loop, not to collect private data. Please redact secrets and personal information.
+  - type: textarea
+    id: scenario
+    attributes:
+      label: What should the agent have remembered?
+      description: Describe the workflow, preference, project convention, or prior decision.
+      placeholder: "Example: The agent should remember that this repo uses uv, not pip."
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: What went wrong?
+      description: Did it forget, recall the wrong thing, recall too much, or miss a contradiction?
+      placeholder: "It suggested pip install again in the next session."
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Failure category
+      options:
+        - Forgetting / no recall
+        - Wrong recall
+        - Contradictory memory
+        - Stale memory
+        - Privacy / should not remember
+        - Retrieval quality
+        - Integration / runtime issue
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "The agent should retrieve the project convention and use uv commands by default."
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Agent/runtime context
+      placeholder: "Hermes / Claude Code / Codex / OpenCode / MCP / other"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Logs, commands, or redacted examples are useful if available.

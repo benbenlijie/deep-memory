@@ -1,0 +1,150 @@
+{
+  "name": "memory_benchmark_v0",
+  "description": "Bilingual benchmark for comparing no-memory baseline against deep-memory assisted retrieval.",
+  "metric": "answer_contains_all_expected_keywords",
+  "tasks": [
+    {
+      "id": "zh_001_style_preference",
+      "language": "zh",
+      "query": "用户喜欢什么回答风格？",
+      "memories": [
+        "用户偏好：中文为主，技术术语用英文。",
+        "用户偏好：回答要简洁、有深度，不要废话。"
+      ],
+      "expected_keywords": ["中文", "简洁", "有深度"]
+    },
+    {
+      "id": "zh_002_timezone",
+      "language": "zh",
+      "query": "用户所在时区是什么？",
+      "memories": ["用户偏好：时区是 Asia/Shanghai。"],
+      "expected_keywords": ["Asia/Shanghai"]
+    },
+    {
+      "id": "zh_003_channel",
+      "language": "zh",
+      "query": "用户主要通过什么渠道使用 agent？",
+      "memories": ["用户偏好：当前主要使用 QQ Bot 渠道。"],
+      "expected_keywords": ["QQ Bot"]
+    },
+    {
+      "id": "zh_004_output_location",
+      "language": "zh",
+      "query": "生成 agent 配置时应放在哪里？",
+      "memories": ["用户偏好：agent 配置输出到独立目录，不放在当前 agent workspace 下。"],
+      "expected_keywords": ["独立目录", "不放在当前 agent workspace"]
+    },
+    {
+      "id": "zh_005_loop_method",
+      "language": "zh",
+      "query": "用户希望 /goal 如何推进？",
+      "memories": ["用户偏好：后续使用 /goal 时，先拆解目标，用 Loop Engineering 方法论推进，并使用 Hermes Kanban 承载和落实工作。"],
+      "expected_keywords": ["拆解目标", "Loop Engineering", "Hermes Kanban"]
+    },
+    {
+      "id": "zh_006_optimizer_metric",
+      "language": "zh",
+      "query": "Agent 配置优化系统采用哪些评估维度？",
+      "memories": ["项目：Agent 配置优化系统采用六维度评估：正确性、效率、专业性、体验、可维护性、能力发挥。"],
+      "expected_keywords": ["正确性", "效率", "专业性", "体验", "可维护性", "能力发挥"]
+    },
+    {
+      "id": "zh_007_iteration_stop",
+      "language": "zh",
+      "query": "Agent 配置优化系统什么时候终止迭代？",
+      "memories": ["项目：Agent 配置优化系统终止条件：达标即停，或连续 2 轮无改善。"],
+      "expected_keywords": ["达标即停", "连续 2 轮无改善"]
+    },
+    {
+      "id": "zh_008_qq_scope",
+      "language": "zh",
+      "query": "QQ channel plugin 的 MVP 范围是什么？",
+      "memories": ["QQ channel plugin 方案：NapCatQQ + OneBot v11 style + Hermes native qq channel plugin，MVP 限定 QQ 私聊文本消息。"],
+      "expected_keywords": ["NapCatQQ", "OneBot v11", "QQ 私聊文本消息"]
+    },
+    {
+      "id": "zh_009_business_position",
+      "language": "zh",
+      "query": "用户当前 AI 私域事业定位是什么？",
+      "memories": ["AI私域/朋友圈事业定位：围绕 AI普惠，从微信朋友圈和私域流量切入。"],
+      "expected_keywords": ["AI普惠", "微信朋友圈", "私域流量"]
+    },
+    {
+      "id": "zh_010_optimization_order",
+      "language": "zh",
+      "query": "Agent 配置优化系统的优化优先级是什么？",
+      "memories": ["项目：Agent 配置优化系统优化顺序：正确性 > 专业性 > 效率 > 能力 > 体验 > 可维护性。"],
+      "expected_keywords": ["正确性", "专业性", "效率", "能力", "体验", "可维护性"]
+    },
+    {
+      "id": "en_001_project_stack",
+      "language": "en",
+      "query": "What storage backend does deep-memory use in the MVP?",
+      "memories": ["deep-memory MVP uses local-first SQLite with FTS5 lexical retrieval."],
+      "expected_keywords": ["SQLite", "FTS5"]
+    },
+    {
+      "id": "en_002_install_command",
+      "language": "en",
+      "query": "How should developers install deep-memory from source today?",
+      "memories": ["deep-memory source quickstart: git clone the repository, cd deep-memory, run uv sync --extra dev, then uv run pytest."],
+      "expected_keywords": ["uv sync --extra dev", "uv run pytest"]
+    },
+    {
+      "id": "en_003_current_features",
+      "language": "en",
+      "query": "Which memory lifecycle feature is already included in the MVP scoring?",
+      "memories": ["deep-memory MVP includes a forgetting-curve-inspired decay score using importance and age."],
+      "expected_keywords": ["forgetting", "decay", "importance"]
+    },
+    {
+      "id": "en_004_future_feature",
+      "language": "en",
+      "query": "Which retrieval upgrade is on the roadmap after the lexical MVP?",
+      "memories": ["deep-memory roadmap includes Chinese tokenizer plus embedding retrieval after the first SQLite/FTS baseline."],
+      "expected_keywords": ["Chinese tokenizer", "embedding retrieval"]
+    },
+    {
+      "id": "en_005_agent_integration",
+      "language": "en",
+      "query": "Which agent ecosystem integrations are planned?",
+      "memories": ["deep-memory roadmap targets Hermes plugin, Claude Code/Codex/OpenCode adapters, and an MCP server."],
+      "expected_keywords": ["Hermes plugin", "MCP server"]
+    },
+    {
+      "id": "en_006_contribution_area",
+      "language": "en",
+      "query": "What benchmark contribution area is encouraged?",
+      "memories": ["Good first contributions include small reproducible benchmarks comparing agents with and without memory."],
+      "expected_keywords": ["reproducible benchmarks", "with and without memory"]
+    },
+    {
+      "id": "en_007_architecture_flow",
+      "language": "en",
+      "query": "What does the deep-memory architecture inject into the agent?",
+      "memories": ["Architecture flow: agent event stream -> memory extractor -> memory engine -> stores -> retrieval planner -> agent context injector."],
+      "expected_keywords": ["retrieval planner", "agent context injector"]
+    },
+    {
+      "id": "en_008_conflict_feature",
+      "language": "en",
+      "query": "How does the MVP surface contradictory memories?",
+      "memories": ["The MVP has conflict candidate detection through simple key/entity overlap, returning related semantic records for review."],
+      "expected_keywords": ["conflict candidate", "semantic records"]
+    },
+    {
+      "id": "en_009_license",
+      "language": "en",
+      "query": "What license does deep-memory use?",
+      "memories": ["deep-memory is released under the MIT license."],
+      "expected_keywords": ["MIT"]
+    },
+    {
+      "id": "en_010_package_status",
+      "language": "en",
+      "query": "Should users pip install deep-memory today?",
+      "memories": ["Package publishing is on the roadmap; until the first PyPI release, use the source install rather than pip install deep-memory."],
+      "expected_keywords": ["source install", "PyPI release"]
+    }
+  ]
+}

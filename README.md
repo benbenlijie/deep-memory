@@ -39,6 +39,18 @@ uv sync --extra dev
 uv run pytest
 ```
 
+### Run the 2-minute examples
+
+```bash
+uv run python examples/quickstart.py
+uv run python examples/memory_vs_nomemory.py
+```
+
+`examples/quickstart.py` shows the smallest local SQLite memory flow: add records,
+inspect stats, and recall a style preference. `examples/memory_vs_nomemory.py`
+prints the same toy agent question with and without persistent memory so the
+behavioral difference is visible immediately.
+
 ### Use the Python API
 
 ```python
@@ -59,6 +71,61 @@ uv run deep-memory init agent.db
 uv run deep-memory add agent.db "用户偏好：中文为主，技术术语用英文" --kind semantic --importance 0.9
 uv run deep-memory search agent.db "用户偏好"
 uv run deep-memory stats agent.db
+```
+
+### Import explicit Hermes session facts
+
+Hermes integration starts with a conservative contract: Hermes or an adapter emits explicit durable `facts`, and `deep-memory` persists them as searchable records.
+
+```bash
+cat > /tmp/hermes-session.jsonl <<'JSONL'
+{"session_id":"s_demo","facts":[{"content":"用户偏好：中文为主，技术术语用英文","kind":"semantic","importance":0.9}]}
+{"session_id":"s_demo","facts":[{"content":"成功流程应该沉淀为 skill","kind":"procedural","confidence":0.8}]}
+JSONL
+
+uv run deep-memory hermes-import /tmp/hermes-memory.db /tmp/hermes-session.jsonl
+uv run deep-memory search /tmp/hermes-memory.db "用户偏好"
+uv run deep-memory stats /tmp/hermes-memory.db
+```
+
+See `docs/HERMES_INTEGRATION.md` for the adapter contract, Python API, and end-to-end demo.
+
+### Use the MCP server
+
+`deep-memory` exposes a stdio MCP server with three tools: `add`, `search`, and `stats`.
+Install the optional MCP dependency before connecting it to an agent:
+
+```bash
+uv sync --extra mcp --extra dev
+```
+
+Hermes Agent example (`~/.hermes/config.yaml` or the active profile config):
+
+```yaml
+mcp_servers:
+  deep_memory:
+    command: "uv"
+    args: ["--directory", "/absolute/path/to/deep-memory", "run", "deep-memory-mcp"]
+    timeout: 30
+```
+
+Claude Code example:
+
+```bash
+claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
+```
+
+Manual verification without an MCP client:
+
+```bash
+uv run python - <<'PY'
+from deep_memory.mcp_server import add_memory, search_memory, memory_stats
+
+DB = "/tmp/deep-memory-mcp-smoke.db"
+print(add_memory("用户偏好：中文为主，技术术语用英文", db_path=DB, kind="semantic"))
+print(search_memory("用户偏好", db_path=DB, limit=1))
+print(memory_stats(db_path=DB))
+PY
 ```
 
 Expected shape:
@@ -98,8 +165,8 @@ print(mem.search("用户喜欢什么风格？", limit=3))
 - [x] Python API + CLI + tests + GitHub Actions CI
 - [ ] Chinese tokenizer + embedding retrieval
 - [ ] Web memory inspector/editor
-- [ ] Hermes plugin
-- [ ] MCP server
+- [x] Hermes adapter MVP: explicit session facts JSONL → `deep-memory` records
+- [x] MCP server adapter (stdio, optional `mcp` extra)
 - [ ] Memory → Skill generation
 
 ## Architecture
@@ -136,7 +203,18 @@ This project is early. Good first contributions are especially valuable around:
 - Hermes/MCP/agent integrations;
 - small reproducible benchmarks comparing agents with and without memory.
 
-Read `CONTRIBUTING.md` before opening a PR.
+## Memory benchmark
+
+The repository includes a first retrieval-value benchmark at `benchmarks/fixtures/memory_benchmark_v0.json` and `benchmarks/memory_benchmark.py`. It compares a no-memory baseline against a fresh `DeepMemory` database on 20 bilingual tasks where the answer depends on remembered user/project facts.
+
+```bash
+uv run python benchmarks/memory_benchmark.py
+uv run python benchmarks/memory_benchmark.py --json
+```
+
+See `docs/MEMORY_BENCHMARK.md` for the metric, fixture schema, and reproduction notes.
+
+Read `CONTRIBUTING.md` before opening a PR. For contribution lanes, good-first-issue ideas, label conventions, and the path for new backends/adapters, see `docs/COMMUNITY.md`.
 
 ## License
 

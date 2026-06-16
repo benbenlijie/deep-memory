@@ -1,0 +1,57 @@
+name: Evaluation fixture
+about: Turn a memory failure or quality claim into a reproducible eval case
+labels: type:eval
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a memory behavior should become a fixture, benchmark row, or regression test.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Failure / eval category
+      options:
+        - Forgetting / no recall
+        - Wrong recall
+        - Contradictory memory
+        - Stale memory
+        - Privacy / should not remember
+        - Chinese retrieval
+        - Mixed-language retrieval
+        - Memory vs no-memory task
+        - Memory × Skill
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: input_memories
+    attributes:
+      label: Redacted input memories or events
+      description: Include the smallest local dataset needed to reproduce the behavior. Redact secrets and private data.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: query_or_task
+    attributes:
+      label: Query or task
+      description: What query or agent task should be evaluated?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Which memory should be recalled, ignored, deprecated, or transformed?
+    validations:
+      required: true
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Current baseline result
+      description: Include command output if available.
+  - type: textarea
+    id: metric
+    attributes:
+      label: Proposed metric
+      placeholder: "Example: recall@3, MRR, precision/recall, task success, tool-call count"

@@ -9,6 +9,7 @@ from typing import Iterable, Literal
 from uuid import uuid4
 
 MemoryKind = Literal["working", "episodic", "semantic", "procedural"]
+ConflictStatus = Literal["active", "candidate", "resolved", "superseded", "deprecated"]
 
 
 def utcnow() -> str:
@@ -26,12 +27,23 @@ class MemoryRecord:
     created_at: str
     updated_at: str
     expires_at: str | None = None
+    conflict_status: ConflictStatus = "active"
+    supersedes_id: str | None = None
+    superseded_by_id: str | None = None
 
 
 @dataclass(frozen=True)
 class SearchResult:
     record: MemoryRecord
     score: float
+
+
+@dataclass(frozen=True)
+class ConflictResolution:
+    record: MemoryRecord
+    status: ConflictStatus
+    confirmed_by_user: bool
+    superseded: tuple[MemoryRecord, ...]
 
 
 class DeepMemory:
@@ -56,7 +68,11 @@ class DeepMemory:
                 source TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                expires_at TEXT
+                expires_at TEXT,
+                conflict_status TEXT NOT NULL DEFAULT 'active'
+                    CHECK (conflict_status IN ('active','candidate','resolved','superseded','deprecated')),
+                supersedes_id TEXT,
+                superseded_by_id TEXT
             );
             CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
                 content, kind, source, content='memories', content_rowid='rowid'
@@ -77,7 +93,19 @@ class DeepMemory:
             END;
             """
         )
+        self._migrate_schema()
         self.conn.commit()
+
+    def _migrate_schema(self) -> None:
+        columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(memories)")}
+        migrations = {
+            "conflict_status": "ALTER TABLE memories ADD COLUMN conflict_status TEXT NOT NULL DEFAULT 'active'",
+            "supersedes_id": "ALTER TABLE memories ADD COLUMN supersedes_id TEXT",
+            "superseded_by_id": "ALTER TABLE memories ADD COLUMN superseded_by_id TEXT",
+        }
+        for column, statement in migrations.items():
+            if column not in columns:
+                self.conn.execute(statement)
 
     def add(
         self,
@@ -162,11 +190,91 @@ class DeepMemory:
             results.append(SearchResult(record=record, score=round(score, 4)))
         return sorted(results, key=lambda r: r.score, reverse=True)
 
+    def resolve_conflict(
+        self,
+        content: str,
+        *,
+        supersedes: list[str] | tuple[str, ...],
+        source: str | None = None,
+        confirmed_by_user: bool = False,
+        importance: float = 0.5,
+        confidence: float = 0.8,
+    ) -> ConflictResolution:
+        if not supersedes:
+            raise ValueError("resolve_conflict requires at least one superseded memory id")
+        old_records = [self.get(record_id) for record_id in supersedes]
+        source_trail = _source_trail(source, old_records)
+        status: ConflictStatus = "resolved" if confirmed_by_user else "candidate"
+        new = self.add(
+            content,
+            kind="semantic",
+            importance=importance,
+            confidence=confidence,
+            source=source_trail,
+        )
+        now = utcnow()
+        self.conn.execute(
+            """
+            UPDATE memories
+            SET conflict_status = ?, supersedes_id = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (status, old_records[0].id, now, new.id),
+        )
+        if confirmed_by_user:
+            for old in old_records:
+                self.conn.execute(
+                    """
+                    UPDATE memories
+                    SET conflict_status = 'superseded', superseded_by_id = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (new.id, now, old.id),
+                )
+        self.conn.commit()
+        return ConflictResolution(
+            record=self.get(new.id),
+            status=status,
+            confirmed_by_user=confirmed_by_user,
+            superseded=tuple(self.get(old.id) for old in old_records),
+        )
+
+    def deprecate(self, record_id: str, *, source: str | None = None) -> MemoryRecord:
+        current = self.get(record_id)
+        now = utcnow()
+        next_source = _source_trail(source, [current])
+        self.conn.execute(
+            """
+            UPDATE memories
+            SET conflict_status = 'deprecated', source = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (next_source, now, record_id),
+        )
+        self.conn.commit()
+        return self.get(record_id)
+
     def conflict_candidates(self, content: str, *, limit: int = 5) -> list[SearchResult]:
         tokens = [t for t in _query_tokens(content) if len(t) >= 2]
         if not tokens:
             return []
         return self.search(" ".join(tokens[:8]), limit=limit, kind="semantic")
+
+    def conflicts(self, *, include_superseded: bool = False) -> list[SearchResult]:
+        statuses: tuple[str, ...] = ("candidate", "resolved", "deprecated")
+        if include_superseded:
+            statuses = statuses + ("superseded",)
+        placeholders = ", ".join("?" for _ in statuses)
+        rows = self.conn.execute(
+            f"""
+            SELECT *, 0.0 AS lexical_score
+            FROM memories
+            WHERE conflict_status IN ({placeholders})
+            ORDER BY updated_at DESC
+            """,
+            statuses,
+        ).fetchall()
+        return [SearchResult(record=_row_to_record(row), score=1.0) for row in rows]
 
     def stats(self) -> dict[str, int]:
         rows = self.conn.execute("SELECT kind, COUNT(*) AS n FROM memories GROUP BY kind").fetchall()
@@ -207,7 +315,22 @@ def _row_to_record(row: sqlite3.Row) -> MemoryRecord:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         expires_at=row["expires_at"],
+        conflict_status=row["conflict_status"],
+        supersedes_id=row["supersedes_id"],
+        superseded_by_id=row["superseded_by_id"],
     )
+
+
+def _source_trail(source: str | None, superseded: list[MemoryRecord]) -> str | None:
+    old_sources = [record.source for record in superseded if record.source]
+    if not source and not old_sources:
+        return None
+    trail_parts = []
+    if source:
+        trail_parts.append(source)
+    if old_sources:
+        trail_parts.append("supersedes " + ", ".join(old_sources))
+    return "; ".join(trail_parts)
 
 
 def _clamp01(value: float) -> float:

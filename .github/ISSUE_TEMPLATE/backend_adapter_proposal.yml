@@ -1,0 +1,65 @@
+name: Backend / adapter proposal
+about: Propose a new memory backend or agent/runtime adapter
+labels: type:adapter, needs design
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this before implementing a new backend or adapter. The goal is to keep integrations small, testable, inspectable, and privacy-aware.
+  - type: dropdown
+    id: proposal_type
+    attributes:
+      label: Proposal type
+      options:
+        - Memory backend
+        - Agent/runtime adapter
+        - Protocol bridge
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Backend / adapter name
+      placeholder: "Example: Chroma backend, Claude Code adapter, OpenCode adapter"
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What bottleneck does this solve?
+      description: Retrieval quality, scale, graph/time reasoning, interoperability, deployment fit, or another concrete bottleneck.
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Minimal contract
+      description: Define input events/API, output records, source/provenance, lifecycle/conflict fields, and error handling.
+      placeholder: |
+        Inputs:
+        Memory fields preserved:
+        Source/provenance:
+        Conflict/deprecation behavior:
+        Error handling:
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and data boundaries
+      description: Where is data stored? Does it leave the local machine? How are deletion/export/redaction handled?
+    validations:
+      required: true
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: Test and smoke plan
+      description: Include unit tests, fixtures, benchmark/eval plan, and one manual command a maintainer can run.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Proposed maintainer / owner
+      placeholder: "GitHub handle or 'looking for owner'"

@@ -1,0 +1,60 @@
+name: Good first issue
+about: A small, well-scoped contribution for new contributors
+labels: good first issue, help wanted
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good first issues should be narrow enough for a new contributor to finish with a small tested PR.
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Contribution lane
+      options:
+        - retrieval
+        - adapters
+        - UI
+        - evals
+        - docs
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this matters
+      description: Explain the memory-system bottleneck this issue touches.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What should be changed, and what is explicitly out of scope?
+      placeholder: |
+        In scope:
+        Out of scope:
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched
+      placeholder: "Example: tests/test_core.py, docs/COMMUNITY.md"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checklist
+      description: Concrete checks a maintainer can use to review the PR.
+      placeholder: |
+        - [ ] Test or fixture added
+        - [ ] Docs updated if behavior changes
+        - [ ] Privacy/source behavior considered
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Suggested commands
+      placeholder: |
+        uv run pytest
+        uv run ruff check src tests

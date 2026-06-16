@@ -42,3 +42,49 @@ def test_conflict_candidates_returns_related_semantic_records(tmp_path):
 
     assert candidates
     assert "深色模式" in candidates[0].record.content
+
+
+def test_confirmed_preference_change_supersedes_old_semantic_memory_with_source_trail(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    old = mem.add("用户偏好：深色模式", kind="semantic", source="profile:v1")
+
+    conflict = mem.resolve_conflict(
+        "用户偏好改为浅色模式",
+        supersedes=[old.id],
+        source="chat:42",
+        confirmed_by_user=True,
+    )
+
+    new = mem.get(conflict.record.id)
+    superseded = mem.get(old.id)
+
+    assert conflict.status == "resolved"
+    assert conflict.confirmed_by_user is True
+    assert new.conflict_status == "resolved"
+    assert new.supersedes_id == old.id
+    assert new.source == "chat:42; supersedes profile:v1"
+    assert superseded.conflict_status == "superseded"
+    assert superseded.superseded_by_id == new.id
+    assert mem.conflicts()[0].record.id == new.id
+
+
+def test_unconfirmed_preference_change_stays_candidate_without_superseding_old_value(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    old = mem.add("用户偏好：深色模式", kind="semantic", source="profile:v1")
+
+    conflict = mem.resolve_conflict(
+        "用户偏好改为浅色模式",
+        supersedes=[old.id],
+        source="chat:42",
+        confirmed_by_user=False,
+    )
+
+    candidate = mem.get(conflict.record.id)
+    original = mem.get(old.id)
+
+    assert conflict.status == "candidate"
+    assert conflict.confirmed_by_user is False
+    assert candidate.conflict_status == "candidate"
+    assert candidate.supersedes_id == old.id
+    assert original.conflict_status == "active"
+    assert original.superseded_by_id is None
