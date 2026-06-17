@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -181,14 +182,38 @@ class DeepMemory:
                 like_params,
             ).fetchall()
         results: list[SearchResult] = []
+        seen_ids: set[str] = set()
         ref = now or datetime.now(timezone.utc)
         for row in rows:
             record = _row_to_record(row)
+            seen_ids.add(record.id)
             decay = forgetting_decay(record.created_at, record.importance, ref)
             lexical = 1.0 / (1.0 + abs(float(row["lexical_score"])))
             score = lexical * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05
             results.append(SearchResult(record=record, score=round(score, 4)))
-        return sorted(results, key=lambda r: r.score, reverse=True)
+        if len(results) < limit:
+            supplement_sql = "AND kind = ?" if kind else ""
+            supplement_params: list[object] = [kind] if kind else []
+            supplement_rows = self.conn.execute(
+                f"""
+                SELECT *, 0.0 AS lexical_score
+                FROM memories
+                WHERE conflict_status != 'superseded' {supplement_sql}
+                ORDER BY importance DESC, updated_at DESC
+                LIMIT 200
+                """,
+                supplement_params,
+            ).fetchall()
+            for row in supplement_rows:
+                record = _row_to_record(row)
+                if record.id in seen_ids:
+                    continue
+                seen_ids.add(record.id)
+                decay = forgetting_decay(record.created_at, record.importance, ref)
+                lexical = _token_overlap_score(query, record.content)
+                score = lexical * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05
+                results.append(SearchResult(record=record, score=round(score, 4)))
+        return sorted(results, key=lambda r: r.score, reverse=True)[:limit]
 
     def resolve_conflict(
         self,
@@ -296,12 +321,27 @@ def forgetting_decay(created_at: str, importance: float, now: datetime | None = 
 
 
 def _query_tokens(text: str) -> Iterable[str]:
+    """Return local-first query tokens for mixed Chinese/English memory text.
+
+    This is the lightweight Chinese baseline before optional jieba/pkuseg/BGE paths:
+    preserve ASCII words, extract meaningful Chinese runs, and add character
+    bigrams so SQLite FTS5 can recall short Chinese phrases without external
+    tokenizer installs.
+    """
     text = text.strip()
-    words = [w for w in text.replace("，", " ").replace("。", " ").split() if w]
-    zh_chars = [c for c in text if "一" <= c <= "鿿"]
-    bigrams = ["".join(zh_chars[i : i + 2]) for i in range(max(len(zh_chars) - 1, 0))]
-    tokens = words + bigrams
+    ascii_words = re.findall(r"[A-Za-z0-9][A-Za-z0-9_./+-]*", text)
+    zh_runs = re.findall(r"[\u4e00-\u9fff]+", text)
+    zh_bigrams = [run[i : i + 2] for run in zh_runs for i in range(max(len(run) - 1, 0))]
+    tokens = ascii_words + zh_runs + zh_bigrams
     return list(dict.fromkeys(tokens)) or [text]
+
+
+def _token_overlap_score(query: str, content: str) -> float:
+    query_tokens = set(_query_tokens(query))
+    if not query_tokens:
+        return 0.0
+    content_tokens = set(_query_tokens(content))
+    return len(query_tokens & content_tokens) / len(query_tokens)
 
 
 def _row_to_record(row: sqlite3.Row) -> MemoryRecord:

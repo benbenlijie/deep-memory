@@ -26,3 +26,7 @@ __all__ = [
     "extract_and_persist",
     "persist_extracted_memories",
 ]
+
+from .skill_export import SkillCandidate, procedural_memory_to_skill_markdown
+
+__all__ += ["SkillCandidate", "procedural_memory_to_skill_markdown"]

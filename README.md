@@ -88,7 +88,7 @@ uv run deep-memory search /tmp/hermes-memory.db "用户偏好"
 uv run deep-memory stats /tmp/hermes-memory.db
 ```
 
-See `docs/HERMES_INTEGRATION.md` for the adapter contract, Python API, and end-to-end demo.
+See `docs/HERMES_INTEGRATION.md` for the adapter contract, Python API, and end-to-end demo. See `docs/MCP_INTEROPERABILITY.md` for Hermes, Claude Code, and Codex-style MCP client setup plus a reproducible smoke-test transcript.
 
 ### Use the MCP server
 
@@ -159,7 +159,7 @@ print(mem.search("用户喜欢什么风格？", limit=3))
 
 - [x] SQLite local-first persistence
 - [x] L2/L3/L4 memory records with source, confidence, importance and timestamps
-- [x] FTS5 lexical retrieval plus Chinese bigram fallback for the first local MVP
+- [x] FTS5 lexical retrieval plus local-first Chinese fallback: ASCII word preservation, Chinese phrase/bigram tokens, and token-overlap supplementation
 - [x] Forgetting-curve-inspired decay score
 - [x] Conflict candidate detection through simple key/entity overlap
 - [x] Python API + CLI + tests + GitHub Actions CI
