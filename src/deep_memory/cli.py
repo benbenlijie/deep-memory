@@ -9,6 +9,7 @@ from rich.table import Table
 
 from .adapters.hermes import write_hermes_session_facts
 from .core import DeepMemory
+from .webui import run_server
 
 app = typer.Typer(help="Persistent memory for AI agents")
 console = Console()
@@ -115,6 +116,16 @@ def stats(db: Path) -> None:
     """Print memory counts by layer."""
     mem = DeepMemory(db)
     console.print_json(json.dumps(mem.stats(), ensure_ascii=False))
+
+
+@app.command()
+def webui(
+    db: Path,
+    host: str = typer.Option("127.0.0.1", help="Bind host for the local-only WebUI"),
+    port: int = typer.Option(8765, help="Bind port for the local WebUI"),
+) -> None:
+    """Serve the local memory inspector/editor WebUI."""
+    run_server(db, host=host, port=port)
 
 
 if __name__ == "__main__":

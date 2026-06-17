@@ -73,6 +73,31 @@ uv run deep-memory search agent.db "用户偏好"
 uv run deep-memory stats agent.db
 ```
 
+### Launch the local memory inspector WebUI
+
+The WebUI is a deliberately small local inspector/editor for SQLite memory files. It
+lists and searches records, edits content/kind/confidence/importance/source, and
+soft-deletes records by marking them `deprecated`.
+
+```bash
+uv run deep-memory webui agent.db --host 127.0.0.1 --port 8765
+# then open http://127.0.0.1:8765
+```
+
+Manual smoke check:
+
+```bash
+uv run deep-memory init /tmp/deep-memory-webui.db
+uv run deep-memory add /tmp/deep-memory-webui.db "用户偏好：中文为主，技术术语用英文" --kind semantic
+uv run python - <<'PY'
+from deep_memory.webui import render_index
+html = render_index('/tmp/deep-memory-webui.db', query='中文')
+assert 'Memory Inspector' in html
+assert '用户偏好：中文为主' in html
+print('webui smoke ok')
+PY
+```
+
 ### Import explicit Hermes session facts
 
 Hermes integration starts with a conservative contract: Hermes or an adapter emits explicit durable `facts`, and `deep-memory` persists them as searchable records.

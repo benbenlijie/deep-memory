@@ -6,11 +6,12 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Literal
 from uuid import uuid4
 
 MemoryKind = Literal["working", "episodic", "semantic", "procedural"]
 ConflictStatus = Literal["active", "candidate", "resolved", "superseded", "deprecated"]
+RetrievalBackend = Literal["local", "jieba"]
 
 
 def utcnow() -> str:
@@ -147,11 +148,13 @@ class DeepMemory:
         limit: int = 5,
         kind: MemoryKind | None = None,
         now: datetime | None = None,
+        backend: RetrievalBackend = "local",
     ) -> list[SearchResult]:
         query = query.strip()
         if not query:
             return []
-        fts_query = " OR ".join(f'"{token}"' for token in _query_tokens(query))
+        query_tokens = _query_tokens(query, backend=backend)
+        fts_query = " OR ".join(f'"{token}"' for token in query_tokens)
         params: list[object] = [fts_query]
         kind_sql = ""
         if kind:
@@ -170,7 +173,7 @@ class DeepMemory:
             params,
         ).fetchall()
         if not rows:
-            like_terms = list(_query_tokens(query))[:8]
+            like_terms = query_tokens[:8]
             like_where = " OR ".join("content LIKE ?" for _ in like_terms)
             like_params: list[object] = [f"%{term}%" for term in like_terms]
             if kind:
@@ -210,7 +213,7 @@ class DeepMemory:
                     continue
                 seen_ids.add(record.id)
                 decay = forgetting_decay(record.created_at, record.importance, ref)
-                lexical = _token_overlap_score(query, record.content)
+                lexical = _token_overlap_score(query, record.content, backend=backend)
                 score = lexical * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05
                 results.append(SearchResult(record=record, score=round(score, 4)))
         return sorted(results, key=lambda r: r.score, reverse=True)[:limit]
@@ -320,27 +323,46 @@ def forgetting_decay(created_at: str, importance: float, now: datetime | None = 
     return math.exp(-age_days / half_life)
 
 
-def _query_tokens(text: str) -> Iterable[str]:
-    """Return local-first query tokens for mixed Chinese/English memory text.
+def _query_tokens(text: str, backend: RetrievalBackend = "local") -> list[str]:
+    """Return query tokens for mixed Chinese/English memory text.
 
-    This is the lightweight Chinese baseline before optional jieba/pkuseg/BGE paths:
-    preserve ASCII words, extract meaningful Chinese runs, and add character
-    bigrams so SQLite FTS5 can recall short Chinese phrases without external
-    tokenizer installs.
+    The default ``local`` backend is the lightweight Chinese baseline: preserve
+    ASCII words, extract meaningful Chinese runs, and add character bigrams so
+    SQLite FTS5 can recall short Chinese phrases without external installs.
+
+    The optional ``jieba`` backend keeps the same local tokens and adds jieba
+    Chinese word segmentation when the ``deep-memory[retrieval]`` extra is
+    installed. That gives a tokenizer seam without making the base install
+    heavier.
     """
+    if backend not in {"local", "jieba"}:
+        raise ValueError(f"unknown retrieval backend: {backend}")
     text = text.strip()
     ascii_words = re.findall(r"[A-Za-z0-9][A-Za-z0-9_./+-]*", text)
     zh_runs = re.findall(r"[\u4e00-\u9fff]+", text)
     zh_bigrams = [run[i : i + 2] for run in zh_runs for i in range(max(len(run) - 1, 0))]
     tokens = ascii_words + zh_runs + zh_bigrams
+    if backend == "jieba":
+        tokens.extend(_jieba_tokens(zh_runs))
     return list(dict.fromkeys(tokens)) or [text]
 
 
-def _token_overlap_score(query: str, content: str) -> float:
-    query_tokens = set(_query_tokens(query))
+def _jieba_tokens(zh_runs: list[str]) -> list[str]:
+    try:
+        import jieba  # type: ignore[import-not-found]
+    except ImportError as exc:  # pragma: no cover - exercised only without optional extra
+        raise RuntimeError(
+            "jieba retrieval backend requires the optional extra: "
+            "pip install 'deep-memory[retrieval]'"
+        ) from exc
+    return [token for run in zh_runs for token in jieba.cut(run) if token.strip()]
+
+
+def _token_overlap_score(query: str, content: str, backend: RetrievalBackend = "local") -> float:
+    query_tokens = set(_query_tokens(query, backend=backend))
     if not query_tokens:
         return 0.0
-    content_tokens = set(_query_tokens(content))
+    content_tokens = set(_query_tokens(content, backend=backend))
     return len(query_tokens & content_tokens) / len(query_tokens)
 
 

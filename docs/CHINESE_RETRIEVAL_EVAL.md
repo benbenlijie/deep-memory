@@ -75,7 +75,23 @@ uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrie
 uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl --json
 ```
 
-Current baseline on the local FTS5/bigram implementation should be recorded when running the command. In this pass the baseline is `passed=24/55` (`accuracy=0.436`), while the current local-first Chinese retrieval path reaches `passed=55/55` (`accuracy=1.0`) on the same fixture, a `+31/55` absolute lift. The implementation stays local-first: no jieba/pkuseg/BGE install is required for the default path, but the design leaves a clear seam for an optional tokenizer or embedding backend later.
+The current local-first backend should be recorded when running the command. In this pass the default `local` path is `passed=55/55` (`accuracy=1.0`) on the fixture, compared with the earlier plain SQLite FTS baseline of `passed=24/55` (`accuracy=0.436`), a `+31/55` absolute lift.
+
+Phase 2 also adds an optional tokenizer backend:
+
+```bash
+uv sync --extra retrieval
+uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl --backend jieba
+uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl --backend jieba --json
+```
+
+The eval also accepts `--limit` for top-k sensitivity checks, for example:
+
+```bash
+uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl --limit 3
+```
+
+The `jieba` backend preserves the same ASCII/Chinese-run/bigram tokens as `local`, then supplements them with jieba Chinese word segmentation. This keeps the base install lightweight: `jieba` is only installed through the `retrieval` extra, while the default backend has no new dependency. In this pass `--backend jieba` also reaches `passed=55/55` (`accuracy=1.0`) on v1, so it is a documented optional retrieval seam rather than a claimed lift over the already-strong local baseline.
 
 If a future tokenizer or embedding path changes ranking, this file should remain a regression suite: improve labels only when the schema or retrieval objective changes intentionally.
 
