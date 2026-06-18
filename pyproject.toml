@@ -22,6 +22,7 @@ dependencies = ["typer>=0.12.0", "pydantic>=2.7.0", "rich>=13.7.0"]
 dev = ["pytest>=8.0.0", "ruff>=0.6.0"]
 mcp = ["mcp>=1.0.0"]
 retrieval = ["jieba>=0.42.1"]
+vector = ["sentence-transformers>=3.0.0"]
 
 [project.scripts]
 deep-memory = "deep_memory.cli:app"
@@ -38,3 +39,9 @@ target-version = "py310"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.deep-memory.embedding]
+enabled = false
+
+[tool.deep-memory.trust]
+auto_detect = true

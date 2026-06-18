@@ -198,7 +198,7 @@ A user counts as activated when they complete at least one of:
 
 | Day | Action | Output |
 | --- | --- | --- |
-| Monday | Collect GitHub traffic, stars, clones, issues, comments | `docs/launch/weekly-metrics/YYYY-WW.md` |
+| Monday | Collect GitHub traffic, stars, clones, issues, comments | `docs/internal/launch/weekly-metrics/YYYY-WW.md` |
 | Tuesday | Classify feedback into: retrieval, governance, integration, docs, packaging | Top 3 bottlenecks |
 | Wednesday–Thursday | Fix the highest-leverage bottleneck | PR/commit + test evidence |
 | Friday | Publish “what changed this week” update | GitHub release/discussion + social post |

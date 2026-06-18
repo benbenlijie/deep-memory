@@ -86,6 +86,6 @@ The default retrieval limit is intentionally set to 8 because the current MVP us
 
 ## Interpretation
 
-If you退后一步看，这个 benchmark 不是在证明“memory 让模型更聪明”。它证明的是一个更底层的东西：当任务依赖跨会话状态时，没有可检索的长期表征，系统连正确问题空间都进不去。
+Stepping back, this benchmark is not proving that “memory makes models smarter”. It is proving something lower-level: when a task depends on cross-session state, without a retrievable long-term representation the system cannot even enter the right problem space.
 
 That is the value this v0 harness tries to isolate.

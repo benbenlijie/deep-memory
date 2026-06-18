@@ -188,3 +188,11 @@ This phase prototypes export only. It does not yet:
 - merge multiple memories into one polished skill.
 
 Those are future layers. The current root problem is to make the transition from L4 procedural memory to reviewable playbook explicit, testable, and safe.
+
+## Activation-loop follow-up
+
+This document defines the export boundary: L4 procedural memory can become reviewable candidate markdown.
+
+The next layer is defined in `docs/SKILL_ACTIVATION_LOOP.md`: a candidate becomes active agent capability only through explicit trigger conditions, an evidence bundle, a human/reviewer gate, an installation boundary, and rollback.
+
+The important invariant is unchanged: Memory-to-Skill exports candidates only. It does not auto-install skills.

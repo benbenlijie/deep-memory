@@ -1,6 +1,6 @@
 # Contributing
 
-We are building deep-memory as research-grade developer infrastructure. Please optimize for small, tested pull requests.
+`deep-memory` is alpha-quality developer infrastructure for agent memory. The bar for merging is small, tested pull requests, not broad rewrites.
 
 ## Local setup
 

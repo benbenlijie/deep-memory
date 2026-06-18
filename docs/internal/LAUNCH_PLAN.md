@@ -32,12 +32,12 @@ Every launch below is tied to a concrete artifact, a demo that can be reproduced
 - `README.md` first-screen positioning and 2-minute source quickstart.
 - `examples/quickstart.py` and `examples/memory_vs_nomemory.py`.
 - `benchmarks/memory_benchmark.py` and `docs/MEMORY_BENCHMARK.md`.
-- `docs/LAUNCH_LOOP.md` as the launch operating loop.
-- `docs/M1_GO_NO_GO.md` as the launch gate.
+- `docs/internal/LAUNCH_LOOP.md` as the launch operating loop.
+- `docs/internal/M1_GO_NO_GO.md` as the launch gate.
 
 ### Demo
 
-Use the “你的 AI 记得你吗？” 60–90 second demo from `docs/LAUNCH_LOOP.md`:
+Use the “你的 AI 记得你吗？” 60–90 second demo from `docs/internal/LAUNCH_LOOP.md`:
 
 ```bash
 uv sync --extra dev
@@ -70,7 +70,7 @@ Do not yet claim: “best memory layer”, “production-ready”, “human-like
 
 - GitHub issue template: memory failure case.
 - Pinned issue: “Share where your agent forgot something important.”
-- Manual launch feedback log using `docs/METRICS.md` schema.
+- Manual launch feedback log using `docs/internal/METRICS.md` schema.
 - Weekly triage: setup friction, positioning confusion, retrieval failures, integration requests, trust/safety concerns.
 
 ### Distribution — English
@@ -100,7 +100,7 @@ Do not yet claim: “best memory layer”, “production-ready”, “human-like
 - `evals/data/zh_memory_retrieval.jsonl`.
 - `evals/chinese_retrieval_eval.py`.
 - `docs/CHINESE_RETRIEVAL_EVAL.md` with fixture schema, metrics, and baseline notes.
-- A benchmark snapshot in `docs/METRICS.md` or a weekly metric note.
+- A benchmark snapshot in `docs/internal/METRICS.md` or a weekly metric note.
 
 ### Demo
 
@@ -160,7 +160,7 @@ Do not claim broad superiority over Mem0/Zep/Graphiti/Cognee/LangMem/TencentDB-A
 
 ### Artifact
 
-- `docs/WEBUI_SPEC.md` plus either a working WebUI MVP or a clickable demo/screenshot prototype.
+- `docs/internal/WEBUI_SPEC.md` plus either a working WebUI MVP or a clickable demo/screenshot prototype.
 - Memory inspector/editor flows: inspect, correct, delete, source trail, conflict candidates.
 - Memory failure case issue template and triage loop.
 - Updated README section: “How to inspect and correct memory.”
@@ -281,7 +281,7 @@ Do not claim universal compatibility until the matrix is maintained by real user
 
 ### Artifact
 
-- `docs/MEMORY_TO_SKILL.md` and working Memory -> Skill export pipeline.
+- `docs/internal/MEMORY_TO_SKILL.md` and working Memory -> Skill export pipeline.
 - Repeated-task eval comparing no memory vs fact memory vs memory + generated skill.
 - Reviewable skill candidate format with provenance, safety checks, and human approval.
 - Community registry path: examples, governance, contribution rules.

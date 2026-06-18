@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>deep-memory · 架构可视化</title>
+<style>
+:root{
+  --bg0:#020617;--bg1:#0f172a;--bg2:#1e293b;
+  --cyan:#22d3ee;--cyan-bg:rgba(8,51,68,.55);
+  --green:#34d399;--green-bg:rgba(6,78,59,.5);
+  --purple:#a78bfa;--purple-bg:rgba(76,29,149,.5);
+  --amber:#fbbf24;--amber-bg:rgba(120,53,15,.4);
+  --gray:#94a3b8;--gray-bg:rgba(30,41,59,.7);
+  --pink:#fb7185;--pink-bg:rgba(136,19,55,.3);
+  --t1:#f8fafc;--t2:#e2e8f0;--t3:#cbd5e1;--t4:#94a3b8;--t5:#64748b;
+  --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:60px}
+body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--bg0);color:var(--t2);line-height:1.6;overflow-x:hidden}
+code,pre,.mono{font-family:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Consolas,monospace}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--bg2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--t5)}
+
+/* ===== progress bar ===== */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--cyan),var(--green),var(--purple));width:0;z-index:1000;transition:width .15s}
+
+/* ===== nav ===== */
+nav{position:fixed;top:0;left:0;width:260px;height:100vh;background:rgba(2,6,23,.95);backdrop-filter:blur(12px);border-right:1px solid var(--bg2);z-index:100;display:flex;flex-direction:column;transition:transform .3s}
+nav .logo{padding:24px 22px 18px;font-size:18px;font-weight:800;color:var(--t1);border-bottom:1px solid var(--bg2)}
+nav .logo span{background:linear-gradient(135deg,var(--cyan),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}
+nav ul{list-style:none;padding:14px 0;flex:1;overflow-y:auto}
+nav ul li a{display:flex;align-items:center;gap:10px;padding:10px 22px;color:var(--t4);text-decoration:none;font-size:13.5px;font-weight:500;transition:all .2s;border-left:3px solid transparent}
+nav ul li a:hover{color:var(--t2);background:rgba(255,255,255,.03)}
+nav ul li a.active{color:var(--green);border-left-color:var(--green);background:rgba(52,211,153,.06)}
+nav ul li a .num{font-size:11px;color:var(--t5);width:22px;font-weight:700}
+nav ul li a.active .num{color:var(--green)}
+nav .badge{padding:14px 22px;font-size:11px;color:var(--t5);border-top:1px solid var(--bg2)}
+#navToggle{display:none;position:fixed;top:14px;left:14px;z-index:200;background:var(--bg1);border:1px solid var(--bg2);color:var(--t2);width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:18px}
+
+main{margin-left:260px}
+section{min-height:100vh;padding:70px 50px 60px;display:flex;flex-direction:column;justify-content:center;max-width:1100px}
+.section-tag{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px}
+.section-title{font-size:34px;font-weight:800;color:var(--t1);margin-bottom:8px;line-height:1.25}
+.section-sub{font-size:15px;color:var(--t4);margin-bottom:40px}
+
+.card{background:var(--bg1);border:1px solid var(--bg2);border-radius:var(--radius);padding:24px;transition:all .25s}
+.card:hover{border-color:var(--t5);transform:translateY(-3px)}
+.card-label{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.card-small{font-size:13px;color:var(--t3);margin-bottom:4px}
+.card-tiny{font-size:11.5px;color:var(--t4)}
+
+/* ===== hero ===== */
+#hero{align-items:center;text-align:center;background:radial-gradient(ellipse at top,rgba(34,211,238,.06),transparent 60%)}
+.hero-title{font-size:64px;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#22d3ee 0%,#34d399 50%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:14px}
+.hero-cn{font-size:20px;color:var(--t3);margin-bottom:4px}
+.hero-en{font-size:14px;color:var(--t5);margin-bottom:36px}
+.hero-stats{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:28px}
+.hero-stat{display:flex;flex-direction:column;align-items:center;gap:6px;padding:20px 30px;border-radius:var(--radius);border:1px solid var(--bg2);background:rgba(15,23,42,.6);min-width:200px;transition:all .3s}
+.hero-stat:hover{border-color:var(--cyan);box-shadow:0 0 30px rgba(34,211,238,.1)}
+.hero-stat .icon{font-size:28px}
+.hero-stat .en{font-size:13px;font-weight:700;color:var(--t2)}
+.hero-stat .cn{font-size:12px;color:var(--t4)}
+.hero-badges{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.badge-chip{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid}
+.badge-chip.b1{color:var(--cyan);border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.05)}
+.badge-chip.b2{color:var(--green);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.05)}
+.badge-chip.b3{color:var(--amber);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05)}
+.scroll-hint{margin-top:50px;color:var(--t5);font-size:13px;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+/* ===== architecture diagram ===== */
+.arch-diagram{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;position:relative}
+.arch-col{display:flex;flex-direction:column;gap:14px}
+.arch-col-title{text-align:center;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.arch-node{border-radius:12px;padding:16px;cursor:pointer;transition:all .3s;position:relative;border:1px solid}
+.arch-node:hover{transform:translateY(-3px) scale(1.02);filter:brightness(1.15)}
+.arch-node.cyan{background:var(--cyan-bg);border-color:rgba(34,211,238,.4)}
+.arch-node.cyan:hover{box-shadow:0 8px 30px rgba(34,211,238,.2)}
+.arch-node.green{background:var(--green-bg);border-color:rgba(52,211,153,.4)}
+.arch-node.green:hover{box-shadow:0 8px 30px rgba(52,211,153,.2)}
+.arch-node.purple{background:var(--purple-bg);border-color:rgba(167,139,250,.4)}
+.arch-node.purple:hover{box-shadow:0 8px 30px rgba(167,139,250,.2)}
+.arch-node.amber{background:var(--amber-bg);border-color:rgba(251,191,36,.4)}
+.arch-node.amber:hover{box-shadow:0 8px 30px rgba(251,191,36,.15)}
+.arch-node.gray{background:var(--gray-bg);border-color:rgba(148,163,184,.3)}
+.arch-node.gray:hover{box-shadow:0 8px 30px rgba(148,163,184,.15)}
+.arch-node .nl{font-size:14px;font-weight:700;color:var(--t1)}
+.arch-node .nd{font-size:11.5px;color:var(--t3);margin-top:4px}
+.arch-node .nt{font-size:10.5px;color:var(--t4);margin-top:3px}
+.arch-arrows{text-align:center;font-size:20px;color:var(--t5);margin:10px 0}
+.safety-bar{margin-top:24px;padding:16px 24px;border-radius:12px;background:var(--pink-bg);border:1px dashed var(--pink);text-align:center}
+.safety-bar .sl{font-size:14px;font-weight:700;color:var(--pink)}
+.safety-bar .ss{font-size:12px;color:var(--t3);margin-top:4px}
+
+/* ===== module grid ===== */
+.mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.mod-card{background:var(--bg1);border:1px solid var(--bg2);border-radius:12px;padding:20px;transition:all .3s;border-left:3px solid var(--green)}
+.mod-card:hover{border-color:var(--green);transform:translateY(-2px)}
+.mod-card .mn{font-size:15px;font-weight:700;color:var(--t1)}
+.mod-card .mf{font-size:12px;color:var(--cyan);margin:4px 0 8px;font-family:ui-monospace,monospace}
+.mod-card .md{font-size:12.5px;color:var(--t3);line-height:1.55}
+.dep-note{margin-top:28px;padding:18px 24px;border-radius:12px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);font-size:13px;color:var(--t3)}
+.dep-note strong{color:var(--green)}
+
+/* ===== lifecycle ===== */
+.lifecycle-flow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:40px}
+.lc-state{padding:16px 22px;border-radius:12px;text-align:center;min-width:140px;border:1px solid;transition:all .3s}
+.lc-state:hover{transform:scale(1.05)}
+.lc-state .ln{font-size:14px;font-weight:700}
+.lc-state .le{font-size:11px;color:var(--t4);margin-top:3px}
+.lc-state.lc-candidate{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4)}
+.lc-state.lc-candidate .ln{color:var(--amber)}
+.lc-state.lc-active{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.5)}
+.lc-state.lc-active .ln{color:var(--green)}
+.lc-state.lc-end{background:rgba(148,163,184,.08);border-color:rgba(148,163,184,.3)}
+.lc-state.lc-end .ln{color:var(--gray)}
+.lc-arrow{font-size:22px;color:var(--t5)}
+.decay-bars{display:flex;flex-direction:column;gap:14px;margin-bottom:30px}
+.decay-row{display:flex;align-items:center;gap:16px}
+.decay-label{width:160px;font-size:13px;font-weight:600;color:var(--t2)}
+.decay-label .en{font-size:11px;color:var(--t4);font-weight:400}
+.decay-track{flex:1;height:28px;background:var(--bg1);border-radius:6px;overflow:hidden;position:relative;border:1px solid var(--bg2)}
+.decay-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:12px;font-size:12px;font-weight:700;color:var(--bg0);transition:width 1s}
+.decay-fill.f1{background:linear-gradient(90deg,#f87171,#fbbf24)}
+.decay-fill.f2{background:linear-gradient(90deg,#fbbf24,#34d399)}
+.decay-fill.f3{background:linear-gradient(90deg,#34d399,#22d3ee)}
+.decay-fill.f4{background:linear-gradient(90deg,#22d3ee,#a78bfa)}
+.consolidation-note{padding:18px;border-radius:12px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);font-size:13px;color:var(--t3)}
+.consolidation-note strong{color:var(--purple)}
+
+/* ===== trust ladder ===== */
+.trust-ladder{display:flex;flex-direction:column;gap:8px;margin-bottom:30px}
+.trust-row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-radius:10px;background:var(--bg1);border:1px solid var(--bg2);transition:all .3s}
+.trust-row:hover{border-color:var(--t5);transform:translateX(6px)}
+.trust-factor{width:60px;font-size:24px;font-weight:900;text-align:center}
+.trust-info{flex:1}
+.trust-info .tn{font-size:14px;font-weight:700;color:var(--t1)}
+.trust-info .td{font-size:12px;color:var(--t4)}
+.trust-bar{height:8px;border-radius:4px;margin-top:6px}
+.formula-box{padding:20px 24px;border-radius:12px;background:#0a0e1a;border:1px solid var(--bg2);margin-bottom:20px}
+.formula-box .ft{font-size:12px;color:var(--t5);margin-bottom:10px;font-weight:600}
+.formula-box pre{font-size:14px;color:var(--green);line-height:1.8;white-space:pre-wrap}
+.formula-box pre span{color:var(--cyan)}
+.conflict-callout{padding:16px 20px;border-radius:10px;background:rgba(251,113,133,.06);border-left:3px solid var(--pink);font-size:13px;color:var(--t3)}
+.conflict-callout strong{color:var(--pink)}
+
+/* ===== policy ===== */
+.policy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}
+.policy-card{padding:24px;border-radius:14px;border:1px solid;text-align:center}
+.policy-card .pn{font-size:18px;font-weight:800;margin-bottom:6px}
+.policy-card .pd{font-size:12.5px;color:var(--t3)}
+.policy-card.allow{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3)}
+.policy-card.allow .pn{color:var(--green)}
+.policy-card.deny{background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.3)}
+.policy-card.deny .pn{color:var(--pink)}
+.policy-card.confirm{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3)}
+.policy-card.confirm .pn{color:var(--amber)}
+.policy-lists{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.policy-list{padding:20px;border-radius:12px;background:var(--bg1);border:1px solid var(--bg2)}
+.policy-list h4{font-size:13px;font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+.policy-list.allow-list h4{color:var(--green)}
+.policy-list.deny-list h4{color:var(--pink)}
+.policy-list ul{list-style:none}
+.policy-list li{font-size:13px;color:var(--t3);padding:6px 0;display:flex;gap:8px}
+.policy-list li .ic{flex-shrink:0;width:18px;font-weight:700}
+.allow-list li .ic{color:var(--green)}
+.deny-list li .ic{color:var(--pink)}
+
+/* ===== adapters ===== */
+.adapter-hub{display:flex;flex-direction:column;align-items:center;gap:24px}
+.hub-center{padding:20px 40px;border-radius:50px;background:linear-gradient(135deg,var(--green-bg),var(--cyan-bg));border:2px solid var(--green);font-size:20px;font-weight:900;color:var(--t1);box-shadow:0 0 40px rgba(52,211,153,.15)}
+.adapter-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;width:100%}
+.adapter-card{background:var(--cyan-bg);border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:20px;transition:all .3s}
+.adapter-card:hover{border-color:var(--cyan);transform:translateY(-3px)}
+.adapter-card .an{font-size:16px;font-weight:800;color:var(--t1);margin-bottom:4px}
+.adapter-card .ast{font-size:11px;color:var(--green);font-weight:700;margin-bottom:10px}
+.adapter-card .ar{font-size:12px;color:var(--t3);margin-bottom:4px}
+.adapter-card .ar strong{color:var(--cyan)}
+.adapter-card .ai{font-size:11px;color:var(--t4);margin-top:10px;padding:8px 10px;background:rgba(0,0,0,.3);border-radius:6px;font-family:ui-monospace,monospace;word-break:break-all}
+.protocol-callout{padding:16px 24px;border-radius:12px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);text-align:center;font-size:14px;color:var(--t3)}
+.protocol-callout strong{color:var(--cyan)}
+
+/* ===== pipeline ===== */
+.pipeline-flow{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:36px}
+.pl-stage{padding:14px 18px;border-radius:10px;background:var(--bg1);border:1px solid var(--bg2);font-size:13px;font-weight:600;color:var(--t2);text-align:center;min-width:110px}
+.pl-stage.active{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.pl-arrow{color:var(--t5);font-size:18px}
+.score-breakdown{margin-bottom:28px}
+.score-row{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.score-label{width:200px;font-size:13px;color:var(--t2)}
+.score-label .pct{font-weight:800;float:right}
+.score-track{flex:1;height:24px;background:var(--bg1);border-radius:6px;border:1px solid var(--bg2);overflow:hidden}
+.score-fill{height:100%;display:flex;align-items:center;justify:flex-end;padding-right:10px;font-size:11px;font-weight:700;color:var(--bg0);border-radius:5px}
+.cn-highlight{padding:18px 24px;border-radius:12px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2)}
+.cn-highlight h4{font-size:14px;color:var(--cyan);margin-bottom:10px}
+.cn-highlight .row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--t3);border-bottom:1px solid rgba(255,255,255,.04)}
+.cn-highlight .row:last-child{border:none}
+.cn-highlight .row strong{color:var(--green)}
+
+/* ===== temporal ===== */
+.temporal-vis{margin-bottom:30px}
+.timeline{position:relative;padding:20px 0;margin-bottom:20px}
+.timeline-label{font-size:13px;font-weight:700;margin-bottom:8px}
+.tl-line{height:4px;background:var(--bg2);border-radius:2px;position:relative;overflow:visible}
+.tl-marker{position:absolute;top:-6px;width:16px;height:16px;border-radius:50%;border:3px solid var(--bg0)}
+.tl-event{margin-bottom:16px}
+.tl-event .tl-line{background:linear-gradient(90deg,var(--purple),transparent)}
+.tl-event .tl-marker{background:var(--purple);left:20%}
+.tl-learned .tl-line{background:linear-gradient(90deg,var(--cyan),transparent)}
+.tl-learned .tl-marker{background:var(--cyan);left:55%}
+.tl-note{font-size:11px;color:var(--t4);margin-top:4px}
+.temporal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tt-card{padding:18px;border-radius:12px;background:var(--bg1);border:1px solid var(--bg2)}
+.tt-card .tq{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.tt-card .ta{font-size:12px;color:var(--t4)}
+.conflict-chain{margin-top:24px;padding:18px;border-radius:12px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2)}
+.conflict-chain h4{font-size:14px;color:var(--purple);margin-bottom:12px}
+.conflict-chain .cf-row{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;color:var(--t3)}
+.conflict-chain .cf-key{font-family:ui-monospace,monospace;color:var(--cyan);min-width:180px;font-size:12px}
+
+/* ===== modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:999;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal-box{background:var(--bg1);border:1px solid var(--bg2);border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-box h3{font-size:20px;font-weight:800;color:var(--t1);margin-bottom:12px}
+.modal-box p{font-size:14px;color:var(--t3);margin-bottom:10px}
+.modal-close{margin-top:16px;padding:10px 24px;background:var(--bg2);border:none;border-radius:8px;color:var(--t1);cursor:pointer;font-size:14px;width:100%}
+.modal-close:hover{background:var(--t5)}
+
+/* ===== responsive ===== */
+@media(max-width:900px){
+  .arch-diagram{grid-template-columns:1fr 1fr}
+  .policy-grid{grid-template-columns:1fr}
+  .policy-lists{grid-template-columns:1fr}
+  .temporal-grid{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  nav{transform:translateX(-100%)}
+  nav.open{transform:translateX(0)}
+  #navToggle{display:flex;align-items:center;justify-content:center}
+  main{margin-left:0}
+  section{padding:60px 20px 40px}
+  .hero-title{font-size:40px}
+  .section-title{font-size:26px}
+  .arch-diagram{grid-template-columns:1fr}
+  .lifecycle-flow{flex-direction:column}
+  .pipeline-flow{flex-direction:column}
+  .trust-factor{font-size:18px;width:50px}
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<button id="navToggle">☰</button>
+
+<nav id="nav">
+  <div class="logo">deep-<span>memory</span></div>
+  <ul>
+    <li><a href="#hero" class="active"><span class="num">00</span> 首页</a></li>
+    <li><a href="#arch"><span class="num">01</span> 系统架构</a></li>
+    <li><a href="#modules"><span class="num">02</span> 模块结构</a></li>
+    <li><a href="#lifecycle"><span class="num">03</span> 记忆生命周期</a></li>
+    <li><a href="#trust"><span class="num">04</span> 信任模型</a></li>
+    <li><a href="#policy"><span class="num">05</span> 写入策略</a></li>
+    <li><a href="#adapters"><span class="num">06</span> 跨代理适配</a></li>
+    <li><a href="#pipeline"><span class="num">07</span> 检索流水线</a></li>
+    <li><a href="#temporal"><span class="num">08</span> 双时态溯源</a></li>
+  </ul>
+  <div class="badge">Python 3.10+ · MIT · Alpha</div>
+</nav>
+
+<main>
+
+<!-- ====== HERO ====== -->
+<section id="hero">
+  <div class="hero-title">deep-memory</div>
+  <div class="hero-cn">AI 代理的本地优先记忆层</div>
+  <div class="hero-en">Local-first memory for AI agents. Inspect what they remember. Decide what they keep.</div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="icon">🗄️</div>
+      <div class="en">Local-first</div>
+      <div class="cn">SQLite 本地存储 · 可检查、可备份</div>
+    </div>
+    <div class="hero-stat">
+      <div class="icon">🔗</div>
+      <div class="en">Cross-agent</div>
+      <div class="cn">跨代理协作 · Claude / Codex / Hermes</div>
+    </div>
+    <div class="hero-stat">
+      <div class="icon">🀄</div>
+      <div class="en">Chinese-first</div>
+      <div class="cn">中文检索优先 · FTS5 + bigram</div>
+    </div>
+  </div>
+  <div class="hero-badges">
+    <span class="badge-chip b1">Python 3.10+</span>
+    <span class="badge-chip b2">MIT License</span>
+    <span class="badge-chip b3">Status: Alpha</span>
+  </div>
+  <div class="scroll-hint">↓ 向下滚动浏览</div>
+</section>
+
+<!-- ====== ARCHITECTURE ====== -->
+<section id="arch">
+  <div class="section-tag">01 — System Architecture</div>
+  <h2 class="section-title">系统架构</h2>
+  <p class="section-sub">从代理写入到召回输出的完整数据流。点击节点查看详情。</p>
+
+  <div class="arch-diagram">
+    <div class="arch-col">
+      <div class="arch-col-title" style="color:var(--cyan)">输入 · Input</div>
+      <div class="arch-node cyan" onclick="showModal('Explicit Facts','显式事实写入。通过 Hermes JSONL 适配器导入，携带 source、confidence、importance 等元数据。这是最保守的写入路径。')">
+        <div class="nl">Explicit Facts</div>
+        <div class="nd">显式事实</div>
+        <div class="nt">Hermes JSONL · durable records</div>
+      </div>
+      <div class="arch-node cyan" onclick="showModal('Developer Writes','开发者通过 Python SDK 或 CLI 直接写入。命令包括 add / search / stats / conflicts / export / webui / trust / consolidate。')">
+        <div class="nl">Developer Writes</div>
+        <div class="nd">开发者写入</div>
+        <div class="nt">Python SDK + CLI</div>
+      </div>
+      <div class="arch-node cyan" onclick="showModal('Agent Events','代理事件经过策略门控的提取后写入。默认不抓取原始对话记录——只存储紧凑的持久事实。')">
+        <div class="nl">Agent Events</div>
+        <div class="nd">代理事件</div>
+        <div class="nt">policy-gated extraction</div>
+      </div>
+    </div>
+
+    <div class="arch-col">
+      <div class="arch-col-title" style="color:var(--green)">引擎 · Engine</div>
+      <div class="arch-node green" onclick="showModal('DeepMemory Engine','核心引擎。管理记录生命周期（importance / confidence / decay / trust），处理冲突，执行合并。所有写入路径都经过此处，确保安全边界统一生效。')">
+        <div class="nl">DeepMemory</div>
+        <div class="nd">核心引擎</div>
+        <div class="nt">lifecycle · trust · decay</div>
+      </div>
+      <div class="arch-node green" onclick="showModal('Retrieval Planner','检索规划器。基于 FTS5 全文搜索，附带中文 bigram 回退和可选 jieba 后端。评分 = lexical×0.55 + importance×0.25 + confidence×0.15 + decay×0.05，再乘 trust factor。')">
+        <div class="nl">Retrieval Planner</div>
+        <div class="nd">检索规划</div>
+        <div class="nt">FTS5 + CN tokens · jieba</div>
+      </div>
+    </div>
+
+    <div class="arch-col">
+      <div class="arch-col-title" style="color:var(--purple)">存储 · Storage</div>
+      <div class="arch-node purple" onclick="showModal('SQLite','本地 SQLite 数据库。你可以 cp / scp / inspect / backup / delete。无云服务、无隐藏全局状态。所有状态都是一个文件。')">
+        <div class="nl">SQLite</div>
+        <div class="nd">本地数据库</div>
+        <div class="nt">inspectable · portable</div>
+      </div>
+      <div class="arch-node amber" onclick="showModal('Evals','评估套件。中文检索 v1 (55/55)、v2 (20/20)、memory benchmark v0 (20 bilingual tasks)。这些是回归检查，不是声称记忆问题已解决。')">
+        <div class="nl">Evals</div>
+        <div class="nd">评估</div>
+        <div class="nt">CN retrieval · benchmark</div>
+      </div>
+    </div>
+
+    <div class="arch-col">
+      <div class="arch-col-title" style="color:var(--gray)">输出 · Output</div>
+      <div class="arch-node gray" onclick="showModal('Agent Recall','有界的召回上下文块。只注入少量排名最高的记忆到代理提示中，避免 prompt 膨胀。')">
+        <div class="nl">Agent Recall</div>
+        <div class="nd">代理召回</div>
+        <div class="nt">bounded context</div>
+      </div>
+      <div class="arch-node gray" onclick="showModal('MCP Server','MCP 协议服务端。暴露 add / search / stats / resolve_conflict 等标准工具，供 Claude Code、Hermes、Codex 等调用。')">
+        <div class="nl">MCP Server</div>
+        <div class="nd">MCP 服务</div>
+        <div class="nt">add · search · stats</div>
+      </div>
+      <div class="arch-node gray" onclick="showModal('WebUI','本地 Web 界面。可浏览、搜索、编辑、软删除记录，还包含关系图可视化和洞察分析面板。绑定 127.0.0.1。')">
+        <div class="nl">WebUI</div>
+        <div class="nd">可视化界面</div>
+        <div class="nt">inspect · edit · graph</div>
+      </div>
+      <div class="arch-node gray" onclick="showModal('Skill Candidates','技能候选导出。将程序性记忆转换为可审核的 skill markdown，永远不自动安装为行为——必须人工审核。')">
+        <div class="nl">Skill Candidates</div>
+        <div class="nd">技能候选</div>
+        <div class="nt">review before install</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="safety-bar">
+    <div class="sl">Safety Boundary · 安全边界</div>
+    <div class="ss">Local-first · explicit writes · no secrets by default · conflicts surfaced for review</div>
+  </div>
+</section>
+
+<!-- ====== MODULES ====== -->
+<section id="modules">
+  <div class="section-tag">02 — Module Map</div>
+  <h2 class="section-title">模块结构</h2>
+  <p class="section-sub">src/deep_memory/ 源码布局。所有模块围绕 core.py 构建。</p>
+
+  <div class="mod-grid">
+    <div class="mod-card">
+      <div class="mn">核心引擎</div>
+      <div class="mf">core.py</div>
+      <div class="md">DeepMemory 主类，MemoryRecord，SearchResult。SQLite 操作，搜索算法，生命周期管理，信任评分，备份恢复。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">CLI 命令行</div>
+      <div class="mf">cli.py</div>
+      <div class="md">入口：<code>uv run deep-memory</code>。命令：init, add, search, stats, export, webui, trust, scope, consolidate。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">MCP Server</div>
+      <div class="mf">mcp_server.py</div>
+      <div class="md">入口：<code>uv run deep-memory-mcp</code>。Stdio 工具：add, search, stats, resolve_conflict, conflicts, memory_feedback。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">WebUI</div>
+      <div class="mf">webui.py</div>
+      <div class="md">记录浏览器，关系图可视化（vis.js），时间线视图，洞察分析面板（检索质量、反馈统计）。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">会话提取</div>
+      <div class="mf">extraction.py</div>
+      <div class="md">AgentMessage，ConversationExtractionInput，ExtractedMemory。基于规则的确定性提取（v0），将对话转为结构化记忆。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">便携同步</div>
+      <div class="mf">portable.py</div>
+      <div class="md">Export: memories.jsonl + manifest.json。Import: 合并语义，去重，冲突解决。diff_databases() 跨设备比较。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">技能导出</div>
+      <div class="mf">skill_export.py</div>
+      <div class="md">SkillCandidate 类。程序性记忆 → 可审核 skill markdown。含触发条件、边界检查、验证步骤、人类审核清单。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">隐私策略</div>
+      <div class="mf">privacy.py</div>
+      <div class="md">MemoryPolicyDecision (ALLOW/DENY/REQUIRES_CONFIRMATION)。ensure_memory_content_allowed() 统一安全守卫。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">Hermes 适配器</div>
+      <div class="mf">adapters/hermes.py</div>
+      <div class="md">Hermes 会话事实 JSONL 导入。支持 user/tenant/workspace 作用域，信任等级追踪。</div>
+    </div>
+    <div class="mod-card">
+      <div class="mn">代理包装器</div>
+      <div class="mf">adapters/agent_wrapper.py</div>
+      <div class="md">Codex/OpenCode 包装器。任务前注入 DEEP_MEMORY_CONTEXT，任务后导入 facts-out JSONL。</div>
+    </div>
+  </div>
+
+  <div class="dep-note">
+    <strong>依赖关系：</strong>所有模块以 <code>core.py</code> 为枢纽。<code>cli.py</code> 和 <code>mcp_server.py</code> 是主入口点。adapters/、portable.py、extraction.py、skill_export.py 全部调用 core.py 的 DeepMemory 类。privacy.py 是无外部依赖的独立安全层，被所有写入路径调用。
+  </div>
+</section>
+
+<!-- ====== LIFECYCLE ====== -->
+<section id="lifecycle">
+  <div class="section-tag">03 — Memory Lifecycle</div>
+  <h2 class="section-title">记忆生命周期</h2>
+  <p class="section-sub">记忆是有生命周期的状态，不是只追加的日志。</p>
+
+  <div class="lifecycle-flow">
+    <div class="lc-state lc-candidate">
+      <div class="ln">candidate</div>
+      <div class="le">候选 · 待审核</div>
+    </div>
+    <div class="lc-arrow">→</div>
+    <div class="lc-state lc-active">
+      <div class="ln">active</div>
+      <div class="le">活跃 · 默认召回</div>
+    </div>
+    <div class="lc-arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="lc-state lc-end"><div class="ln">superseded</div><div class="le">被替代</div></div>
+      <div class="lc-state lc-end"><div class="ln">deprecated</div><div class="le">软删除</div></div>
+      <div class="lc-state lc-end"><div class="ln">archived</div><div class="le">合并归档</div></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:18px;color:var(--t1);margin-bottom:20px;font-weight:700">类型衰变半衰期 · Decay Half-lives</h3>
+  <div class="decay-bars">
+    <div class="decay-row">
+      <div class="decay-label">working <span class="en">工作记忆</span></div>
+      <div class="decay-track"><div class="decay-fill f1" style="width:5%">7 天</div></div>
+    </div>
+    <div class="decay-row">
+      <div class="decay-label">episodic <span class="en">情节记忆</span></div>
+      <div class="decay-track"><div class="decay-fill f2" style="width:12%">30 天</div></div>
+    </div>
+    <div class="decay-row">
+      <div class="decay-label">semantic <span class="en">语义记忆</span></div>
+      <div class="decay-track"><div class="decay-fill f3" style="width:50%">180 天</div></div>
+    </div>
+    <div class="decay-row">
+      <div class="decay-label">procedural <span class="en">程序记忆</span></div>
+      <div class="decay-track"><div class="decay-fill f4" style="width:100%">365 天</div></div>
+    </div>
+  </div>
+
+  <div class="consolidation-note">
+    <strong>合并机制 · Consolidation：</strong>当同类 active 记录的 token 重叠相似度 > 0.6 时，系统创建一条摘要记录（取组内最大 importance，平均 confidence，标注来源 "consolidated from &lt;ids&gt;"），将原始记录标记为 <code>archived</code> 并指向摘要。破坏性操作前自动创建 7 天 TTL 的本地备份。
+  </div>
+</section>
+
+<!-- ====== TRUST ====== -->
+<section id="trust">
+  <div class="section-tag">04 — Trust Model</div>
+  <h2 class="section-title">信任模型</h2>
+  <p class="section-sub">source 不只是字符串注释——而是可计算、可审计、可降权的安全边界。</p>
+
+  <div class="trust-ladder">
+    <div class="trust-row">
+      <div class="trust-factor" style="color:var(--green)">1.0</div>
+      <div class="trust-info">
+        <div class="tn"><code>user</code></div>
+        <div class="td">用户直接表达、审核确认后的偏好或事实 · 自动触发：agent=human/user, origin=explicit</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#34d399 100%,var(--bg2) 0%)"></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-factor" style="color:#2dd4bf">0.9</div>
+      <div class="trust-info">
+        <div class="tn"><code>verified</code></div>
+        <div class="td">经测试、人审、权威来源核验 · 手动提升：trust promote --to verified</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#2dd4bf 90%,var(--bg2) 10%)"></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-factor" style="color:var(--cyan)">0.8</div>
+      <div class="trust-info">
+        <div class="tn"><code>agent-high</code></div>
+        <div class="td">高质量自动写入，有策略约束和可审计来源 · 可信代理显式传入</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#22d3ee 80%,var(--bg2) 20%)"></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-factor" style="color:var(--amber)">0.5</div>
+      <div class="trust-info">
+        <div class="tn"><code>agent-auto</code></div>
+        <div class="td">普通 agent 自动提取 · 默认 fallback，旧 plain string source 兼容</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#fbbf24 50%,var(--bg2) 50%)"></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-factor" style="color:var(--amber)">0.5</div>
+      <div class="trust-info">
+        <div class="tn"><code>external</code></div>
+        <div class="td">网页抓取、外部导入 · URL/地址自动检测 (http/ftp/mailto/IP)</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#fbbf24 50%,var(--bg2) 50%)"></div>
+      </div>
+    </div>
+    <div class="trust-row">
+      <div class="trust-factor" style="color:var(--pink)">0.2</div>
+      <div class="trust-info">
+        <div class="tn"><code>untrusted</code></div>
+        <div class="td">明确可疑、恶意、隔离区内容 · 用于保留证据但强降权</div>
+        <div class="trust-bar" style="background:linear-gradient(90deg,#fb7185 20%,var(--bg2) 80%)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="formula-box">
+    <div class="ft">检索权重公式 · Retrieval Weighting</div>
+    <pre>base_score = <span>lexical</span> * 0.55 + <span>importance</span> * 0.25 + <span>confidence</span> * 0.15 + <span>decay</span> * 0.05
+final_score = base_score * <span>trust_factor</span></pre>
+  </div>
+
+  <div class="conflict-callout">
+    <strong>冲突防御：</strong>当新写入的低信任记忆与已有的高信任 active 记忆冲突（token overlap > 0.5，kind 不同），新记忆不会直接进入 active 状态，而是标记为 <code>candidate</code>，等待人工审核。这防止了记忆投毒——低信任导入无法通过高 importance/confidence 覆盖用户确认的事实。
+  </div>
+</section>
+
+<!-- ====== POLICY ====== -->
+<section id="policy">
+  <div class="section-tag">05 — Write Policy</div>
+  <h2 class="section-title">写入策略</h2>
+  <p class="section-sub">deep-memory 不设计成记住一切。每条候选记忆被分为三类。</p>
+
+  <div class="policy-grid">
+    <div class="policy-card allow">
+      <div class="pn">✓ allow</div>
+      <div class="pd">安全、持久、有用的事实。<br>允许写入。</div>
+    </div>
+    <div class="policy-card deny">
+      <div class="pn">✗ deny</div>
+      <div class="pd">过于风险、原始或误导。<br>拒绝写入。</div>
+    </div>
+    <div class="policy-card confirm">
+      <div class="pn">! confirm</div>
+      <div class="pd">可能合法但需明确批准。<br>仅允许同意感知路径。</div>
+    </div>
+  </div>
+
+  <div class="policy-lists">
+    <div class="policy-list allow-list">
+      <h4>✓ 默认允许</h4>
+      <ul>
+        <li><span class="ic">✓</span> 用户偏好：语言、语调、工具选择</li>
+        <li><span class="ic">✓</span> 项目约定：构建命令、编码风格、架构决策</li>
+        <li><span class="ic">✓</span> 已验证的程序性事实：测试通过的工作流</li>
+        <li><span class="ic">✓</span> 稳定的非敏感领域事实</li>
+        <li><span class="ic">✓</span> 不涉及私人档案的团队事实</li>
+      </ul>
+    </div>
+    <div class="policy-list deny-list">
+      <h4>✗ 默认拒绝</h4>
+      <ul>
+        <li><span class="ic">✗</span> 密码、API 密钥、OAuth 令牌、私钥</li>
+        <li><span class="ic">✗</span> 完整聊天记录、邮件、DM、工具日志</li>
+        <li><span class="ic">✗</span> PR 号、issue 号、commit SHA、任务 ID</li>
+        <li><span class="ic">✗</span> 凭证重放、钓鱼、恶意软件</li>
+        <li><span class="ic">✗</span> 对身份、健康、财务、关系的未验证推测</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ====== ADAPTERS ====== -->
+<section id="adapters">
+  <div class="section-tag">06 — Cross-Agent Adapters</div>
+  <h2 class="section-title">跨代理适配</h2>
+  <p class="section-sub">四种 AI 代理通过统一协议连接到同一个本地数据库。</p>
+
+  <div class="adapter-hub">
+    <div class="hub-center">deep-memory</div>
+    <div style="color:var(--t5);font-size:24px">↕ ↔ ↕</div>
+    <div class="adapter-cards">
+      <div class="adapter-card">
+        <div class="an">Hermes</div>
+        <div class="ast">MVP 导入已实现 ✅</div>
+        <div class="ar"><strong>读：</strong>prompt assembly 前搜索，profile/workspace 过滤</div>
+        <div class="ar"><strong>写：</strong>显式 facts JSONL，经验证的会话后写入</div>
+        <div class="ai">deep-memory hermes-import &lt;db&gt; &lt;facts.jsonl&gt;</div>
+      </div>
+      <div class="adapter-card">
+        <div class="an">Claude Code</div>
+        <div class="ast">MCP 规范 ✅</div>
+        <div class="ar"><strong>读：</strong>MCP search 在规划前调用</div>
+        <div class="ar"><strong>写：</strong>MCP add 在测试/审核/用户确认后</div>
+        <div class="ai">claude mcp add deep-memory -- uv ... deep-memory-mcp</div>
+      </div>
+      <div class="adapter-card">
+        <div class="an">Codex</div>
+        <div class="ast">Wrapper MVP 已实现 ✅</div>
+        <div class="ar"><strong>读：</strong>包装器预置召回块 (DEEP_MEMORY_CONTEXT)</div>
+        <div class="ar"><strong>写：</strong>运行后 JSONL facts 导入，需证据</div>
+        <div class="ai">deep-memory codex-run --db ... --task ... --facts-out ...</div>
+      </div>
+      <div class="adapter-card">
+        <div class="an">OpenCode / OpenClaw</div>
+        <div class="ast">规范 · Spec</div>
+        <div class="ar"><strong>读：</strong>运行前召回或循环内 MCP</div>
+        <div class="ar"><strong>写：</strong>检查点触发的显式事实导入</div>
+        <div class="ai">future: deep-memory opencode-run --db ...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="protocol-callout">
+    <strong>最小共同协议：</strong>每个适配器只做两件事——任务前/中 <code>search</code>，任务后 <code>add</code> 已验证的持久事实。无隐藏转录抓取，无静默云同步，无自动安装技能。
+  </div>
+</section>
+
+<!-- ====== PIPELINE ====== -->
+<section id="pipeline">
+  <div class="section-tag">07 — Retrieval Pipeline</div>
+  <h2 class="section-title">检索流水线</h2>
+  <p class="section-sub">从查询到排名结果的完整评分流程。</p>
+
+  <div class="pipeline-flow">
+    <div class="pl-stage">Query 查询</div>
+    <div class="pl-arrow">→</div>
+    <div class="pl-stage">FTS5 Match</div>
+    <div class="pl-arrow">→</div>
+    <div class="pl-stage active">Score 评分</div>
+    <div class="pl-arrow">→</div>
+    <div class="pl-stage">Trust Weighting</div>
+    <div class="pl-arrow">→</div>
+    <div class="pl-stage">Ranked Results</div>
+  </div>
+
+  <h3 style="font-size:16px;color:var(--t1);margin-bottom:18px;font-weight:700">评分组件 · Score Breakdown</h3>
+  <div class="score-breakdown">
+    <div class="score-row">
+      <div class="score-label">Lexical (FTS5 + CN) <span class="pct">55%</span></div>
+      <div class="score-track"><div class="score-fill" style="width:55%;background:var(--cyan)">0.55</div></div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Importance <span class="pct">25%</span></div>
+      <div class="score-track"><div class="score-fill" style="width:25%;background:var(--green)">0.25</div></div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Confidence <span class="pct">15%</span></div>
+      <div class="score-track"><div class="score-fill" style="width:15%;background:var(--amber)">0.15</div></div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Decay (recency) <span class="pct">5%</span></div>
+      <div class="score-track"><div class="score-fill" style="width:5%;background:var(--purple)">0.05</div></div>
+    </div>
+    <div class="score-row">
+      <div class="score-label" style="color:var(--pink)">× Trust Factor <span class="pct">0.2~1.0</span></div>
+      <div class="score-track"><div class="score-fill" style="width:100%;background:linear-gradient(90deg,var(--pink),var(--green))">multiply</div></div>
+    </div>
+  </div>
+
+  <div class="cn-highlight">
+    <h4>🀄 中文检索创新 · Chinese Retrieval</h4>
+    <div class="row"><span>默认本地后端 (FTS5 + bigram)</span> <strong>55/55</strong></div>
+    <div class="row"><span>可选 jieba 后端</span> <strong>55/55</strong></div>
+    <div class="row"><span>纯 SQLite FTS 基线（对照）</span> <span style="color:var(--pink)">24/55</span></div>
+    <div class="row"><span>v2 更难用例 (含干扰项)</span> <strong>20/20 · MRR 1.0</strong></div>
+  </div>
+</section>
+
+<!-- ====== TEMPORAL ====== -->
+<section id="temporal">
+  <div class="section-tag">08 — Dual-Temporal & Provenance</div>
+  <h2 class="section-title">双时态与溯源</h2>
+  <p class="section-sub">每条记忆有两条独立的时间线，支持时间旅行查询。</p>
+
+  <div class="temporal-vis">
+    <div class="timeline tl-event">
+      <div class="timeline-label" style="color:var(--purple)">
+        <code>event_time</code> — 事实为真 / 事件发生的时间
+      </div>
+      <div class="tl-line">
+        <div class="tl-marker" title="事件发生在此时"></div>
+      </div>
+      <div class="tl-note">例：项目约定在 3 月 1 日确立</div>
+    </div>
+    <div class="timeline tl-learned">
+      <div class="timeline-label" style="color:var(--cyan)">
+        <code>learned_at</code> — deep-memory 写入记录的时间
+      </div>
+      <div class="tl-line">
+        <div class="tl-marker" title="记忆在此时写入"></div>
+      </div>
+      <div class="tl-note">例：你在 3 月 15 日才把这个约定写入记忆</div>
+    </div>
+  </div>
+
+  <div class="temporal-grid">
+    <div class="tt-card">
+      <div class="tq">"上周我对这个项目了解什么？"</div>
+      <div class="ta">使用 <code>--as-of &lt;date&gt;</code> 查询特定事件时间点的有效记忆。筛选条件：event_time ≤ as_of AND (valid_until IS NULL OR valid_until &gt; as_of)。</div>
+    </div>
+    <div class="tt-card">
+      <div class="tq">"偏好何时改变的？"</div>
+      <div class="ta">通过冲突链追踪变更历史。<code>valid_until</code> 在冲突解决时自动设置，标记旧记忆失效时间。</div>
+    </div>
+    <div class="tt-card">
+      <div class="tq">"导入时间是否晚于事件发生时间？"</div>
+      <div class="ta">数据质量审计。如果 learned_at 远晚于 event_time，说明是外部导入的历史数据，需检查可信度。</div>
+    </div>
+    <div class="tt-card">
+      <div class="tq">冲突链 · Conflict Chain</div>
+      <div class="ta">解决冲突时，系统自动维护血统关系，保留完整审计轨迹。</div>
+    </div>
+  </div>
+
+  <div class="conflict-chain">
+    <h4>血统字段 · Provenance Fields</h4>
+    <div class="cf-row"><span class="cf-key">supersedes_id</span> → "这条记录替代了那条旧记录"</div>
+    <div class="cf-row"><span class="cf-key">superseded_by_id</span> → "那条更新的记录替代了我"</div>
+    <div class="cf-row"><span class="cf-key">valid_until</span> → 冲突解决时自动设置，标记事实失效时间点</div>
+  </div>
+</section>
+
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
+    <button class="modal-close" onclick="closeModal()">关闭 · Close</button>
+  </div>
+</div>
+
+<script>
+// ===== Modal =====
+function showModal(title, body) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// ===== Nav toggle =====
+const navToggle = document.getElementById('navToggle');
+const nav = document.getElementById('nav');
+navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+
+// ===== Close nav on link click (mobile) =====
+document.querySelectorAll('nav a').forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth <= 768) nav.classList.remove('open');
+  });
+});
+
+// ===== Active section tracking =====
+const sections = document.querySelectorAll('section');
+const navLinks = document.querySelectorAll('nav ul li a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { threshold: 0.35 });
+sections.forEach(s => observer.observe(s));
+
+// ===== Progress bar =====
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const scrolled = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress').style.width = scrolled + '%';
+});
+
+// ===== Escape closes modal =====
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

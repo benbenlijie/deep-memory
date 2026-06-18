@@ -1,19 +1,28 @@
-# Cross-Agent Adapter Specs
+# Cross-agent adapter specs
 
-## Goal
+`deep-memory` should work even when your workflow jumps between tools: Claude Code for one task, Codex for another, Hermes for orchestration, OpenCode or OpenClaw-style agents for longer runs.
 
-`deep-memory` should give autonomous coding agents a shared, local-first memory layer without coupling the project to any single agent runtime. If you step back, the root problem is not “how do we scrape every transcript?” but “what is the smallest trustworthy protocol by which an agent can read useful context and write durable facts after evidence exists?”
+The adapter layer has one job: let each agent read a small amount of useful memory before work, then write back only facts or procedures that are worth keeping.
 
-This document specifies adapter shapes for Hermes, Claude Code, Codex, and OpenCode/OpenClaw-style tools before implementation diverges.
+No hidden transcript scraping. No silent cloud sync. No auto-installed skills.
 
-## Design principles
+## What an adapter must do
 
-- Local-first by default: adapters write to an explicit SQLite database path unless the user chooses another backend later.
-- Explicit writes only: no hidden transcript scraping, no automatic cloud sync, and no silent skill installation.
-- Evidence before durability: procedural memories and project decisions should be written after tests, review, or another verification signal.
-- Source trails: every record should preserve the producing agent, session/run identifier, workspace/project, and source event when available.
-- Least privilege: adapters should request the minimum read/write permissions needed for search and add operations.
-- Portable protocol first: CLI, MCP, hooks, and native plugins should all map to the same small request/response contract.
+An adapter only needs two operations at first:
+
+1. `search` before or during an agent run.
+2. `add` after the agent has a durable fact or a verified procedure.
+
+Everything else can wait. Conflict tools, skill generation, richer scopes, and vector search are useful, but they should not make the first adapter hard to build.
+
+## Basic rules
+
+- Use an explicit SQLite DB path, usually project-local: `.deep-memory/deep-memory.db`.
+- Keep recall small. Do not paste the whole memory DB into the prompt.
+- Write explicit facts, not raw transcripts.
+- Write procedural memory only after evidence: tests, review, or user confirmation.
+- Preserve source: agent name, session/run id, workspace, and source event when available.
+- Do not store secrets, raw credentials, private keys, auth cookies, or temporary task status.
 
 ## Minimal common adapter protocol
 
@@ -268,8 +277,14 @@ codex --ask-for-approval never --sandbox danger-full-access exec \
 Future helper command could look like:
 
 ```bash
-deep-memory codex-run --db .deep-memory/deep-memory.db -- codex exec "Fix the parser tests"
+uv run deep-memory codex-run \
+  --db .deep-memory/deep-memory.db \
+  --task "Fix the parser tests" \
+  --facts-out /tmp/deep-memory-codex-facts.jsonl \
+  -- codex exec "Fix the parser tests and write explicit durable facts to /tmp/deep-memory-codex-facts.jsonl only after tests pass"
 ```
+
+The implemented MVP injects a bounded `DEEP_MEMORY_CONTEXT` block into the child process environment, runs only the command after `--`, and imports only the explicit JSONL file passed by `--facts-out` after the child exits with status 0. It does not read `.env`, token files, raw transcripts, or infer memory from diffs/stdout.
 
 ### Risks
 
@@ -336,7 +351,7 @@ deep-memory opencode-run --db .deep-memory/deep-memory.db -- opencode run "Add r
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Hermes | Native plugin, explicit JSONL import, MCP | Before prompt/context assembly; profile/workspace filters | Explicit facts JSONL or plugin after verified session/loop closure | Profile/project DB path; cross-profile opt-in | `deep-memory hermes-import`; future plugin config | Ephemeral task progress becoming durable memory | MVP import implemented; native plugin planned |
 | Claude Code | MCP, `CLAUDE.md`, hooks/wrapper | MCP `search` before planning or direct tool call | MCP `add` after tests/review/user confirmation | Project/user MCP config; narrow hooks | `claude mcp add deep-memory -- uv ... deep-memory-mcp` | Unverified summaries and private preference leakage | Spec |
-| Codex | Wrapper, MCP, `AGENTS.md` | Prepend wrapper recall block or MCP search | Structured post-run facts with evidence | Repo-scoped DB; env secret scrubbing | Future `deep-memory codex-run` helper | Writing from failed/partial runs | Spec |
+| Codex | Wrapper, MCP, `AGENTS.md` | Prepend wrapper recall block or MCP search | Structured post-run facts with evidence | Repo-scoped DB; env secret scrubbing | `deep-memory codex-run --db ... --task ... --facts-out ... -- codex exec ...` | Writing from failed/partial runs | Wrapper MVP implemented |
 | OpenCode/OpenClaw | MCP, wrapper, JSONL artifact importer | Pre-run recall or MCP inside loop | Checkpoint-based explicit facts/import | Explicit workspace DB mapping | Future `deep-memory opencode-run` helper | Duplicate/hidden writes from long TUI loops | Spec |
 
 ## Suggested implementation sequence

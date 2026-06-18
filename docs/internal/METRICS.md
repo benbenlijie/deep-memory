@@ -117,7 +117,7 @@ Run this loop every week. The point is not content cadence for its own sake; it 
 
 ## Minimum dashboard schema
 
-Before automation, keep the dashboard as `docs/METRICS.md` plus an optional CSV file such as `docs/metrics-weekly.csv`. Each weekly row should use this schema:
+Before automation, keep the dashboard as `docs/internal/METRICS.md` plus an optional CSV file such as `docs/metrics-weekly.csv`. Each weekly row should use this schema:
 
 | Field | Type | Meaning |
 | --- | --- | --- |

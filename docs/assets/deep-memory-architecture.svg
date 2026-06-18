@@ -1,0 +1,112 @@
+<svg width="1120" height="660" viewBox="0 0 1120 660" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">deep-memory architecture</title>
+  <desc id="desc">A local-first persistent memory layer for AI agents: explicit facts flow into the DeepMemory SDK and CLI, are stored in SQLite and FTS5, then retrieved by agents, inspected in WebUI, served over MCP, or exported as skill candidates.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1120" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.7" opacity="0.65"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/>
+    </marker>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .title { font: 700 30px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #e2e8f0; }
+      .subtitle { font: 400 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #94a3b8; }
+      .label { font: 700 16px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #f8fafc; }
+      .small { font: 500 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #cbd5e1; }
+      .tiny { font: 500 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #94a3b8; }
+      .box { rx: 16; filter: url(#softShadow); }
+      .input { fill: rgba(8, 51, 68, 0.72); stroke: #22d3ee; stroke-width: 1.6; }
+      .engine { fill: rgba(6, 78, 59, 0.78); stroke: #34d399; stroke-width: 1.8; }
+      .store { fill: rgba(76, 29, 149, 0.78); stroke: #a78bfa; stroke-width: 1.6; }
+      .eval { fill: rgba(120, 53, 15, 0.62); stroke: #fbbf24; stroke-width: 1.6; }
+      .output { fill: rgba(30, 41, 59, 0.82); stroke: #94a3b8; stroke-width: 1.4; }
+      .safety { fill: rgba(136, 19, 55, 0.42); stroke: #fb7185; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .arrow { stroke: #38bdf8; stroke-width: 2.3; marker-end: url(#arrow); }
+      .greenArrow { stroke: #34d399; stroke-width: 2.3; marker-end: url(#arrowGreen); }
+      .dash { stroke-dasharray: 7 6; }
+    </style>
+  </defs>
+
+  <rect width="1120" height="660" fill="url(#bg)"/>
+  <rect width="1120" height="660" fill="url(#grid)" opacity="0.75"/>
+
+  <text x="56" y="62" class="title">deep-memory architecture</text>
+  <text x="56" y="90" class="subtitle">Local-first persistent memory for agents: explicit facts, inspectable storage, reproducible retrieval, and reviewable skill candidates.</text>
+
+  <path class="arrow" d="M 286 210 C 346 210 348 210 405 210"/>
+  <path class="arrow" d="M 286 330 C 346 330 348 330 405 330"/>
+  <path class="arrow" d="M 286 450 C 346 450 348 450 405 450"/>
+  <path class="greenArrow" d="M 580 250 C 624 250 622 250 666 250"/>
+  <path class="greenArrow" d="M 580 370 C 624 370 622 370 666 370"/>
+  <path class="arrow" d="M 812 245 C 862 210 888 178 930 156"/>
+  <path class="arrow" d="M 812 290 C 872 290 880 290 930 290"/>
+  <path class="arrow" d="M 812 352 C 862 384 888 416 930 440"/>
+  <path class="arrow dash" d="M 580 450 C 698 520 810 540 930 520"/>
+
+  <rect x="48" y="140" width="238" height="96" class="box input"/>
+  <text x="72" y="173" class="label">Explicit facts</text>
+  <text x="72" y="198" class="small">Hermes JSONL adapter</text>
+  <text x="72" y="218" class="tiny">durable records, source, confidence</text>
+
+  <rect x="48" y="260" width="238" height="96" class="box input"/>
+  <text x="72" y="293" class="label">Developer writes</text>
+  <text x="72" y="318" class="small">Python SDK + CLI</text>
+  <text x="72" y="338" class="tiny">add / search / stats / conflicts</text>
+
+  <rect x="48" y="380" width="238" height="96" class="box input"/>
+  <text x="72" y="413" class="label">Agent events</text>
+  <text x="72" y="438" class="small">manual or policy-gated extraction</text>
+  <text x="72" y="458" class="tiny">no raw transcript hoarding by default</text>
+
+  <rect x="405" y="176" width="176" height="112" class="box engine"/>
+  <text x="429" y="213" class="label">DeepMemory</text>
+  <text x="429" y="239" class="small">record lifecycle</text>
+  <text x="429" y="260" class="tiny">importance · confidence · decay</text>
+
+  <rect x="405" y="326" width="176" height="112" class="box engine"/>
+  <text x="429" y="363" class="label">Retrieval planner</text>
+  <text x="429" y="389" class="small">FTS5 + local CN tokens</text>
+  <text x="429" y="410" class="tiny">optional jieba backend</text>
+
+  <rect x="666" y="176" width="148" height="112" class="box store"/>
+  <text x="690" y="213" class="label">SQLite</text>
+  <text x="690" y="239" class="small">local database</text>
+  <text x="690" y="260" class="tiny">inspectable, portable</text>
+
+  <rect x="666" y="326" width="148" height="112" class="box eval"/>
+  <text x="690" y="363" class="label">Evals</text>
+  <text x="690" y="389" class="small">Chinese retrieval v1</text>
+  <text x="690" y="410" class="tiny">memory benchmark v0</text>
+
+  <rect x="930" y="100" width="146" height="90" class="box output"/>
+  <text x="953" y="135" class="label">Agent recall</text>
+  <text x="953" y="160" class="small">bounded context</text>
+
+  <rect x="930" y="245" width="146" height="90" class="box output"/>
+  <text x="953" y="280" class="label">MCP server</text>
+  <text x="953" y="305" class="small">add/search/stats</text>
+
+  <rect x="930" y="395" width="146" height="90" class="box output"/>
+  <text x="953" y="430" class="label">WebUI MVP</text>
+  <text x="953" y="455" class="small">inspect · edit · delete</text>
+
+  <rect x="930" y="505" width="146" height="90" class="box output"/>
+  <text x="953" y="540" class="label">Skill candidates</text>
+  <text x="953" y="565" class="small">review before install</text>
+
+  <rect x="376" y="518" width="496" height="72" class="safety" rx="16"/>
+  <text x="405" y="548" class="label">Safety boundary</text>
+  <text x="405" y="573" class="small">Local-first · explicit writes · no secrets by default · conflicts surfaced for review</text>
+
+  <text x="56" y="618" class="tiny">Current MVP: SQLite/FTS5, Chinese retrieval eval, Hermes import, MCP server, local WebUI, and Memory-to-Skill candidate export.</text>
+</svg>

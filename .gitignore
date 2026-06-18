@@ -6,3 +6,9 @@ __pycache__/
 .DS_Store
 .env
 *.db
+*.db-shm
+*.db-wal
+.omo/
+.playwright-mcp/
+.spec-workflow/
+.deep-memory/

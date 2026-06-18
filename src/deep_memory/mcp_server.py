@@ -18,6 +18,10 @@ def add_memory(
     confidence: float = 0.8,
     source: str | None = None,
     expires_at: str | None = None,
+    scope: str = "workspace",
+    workspace: str | None = None,
+    tenant: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Add one memory record and return an MCP-friendly JSON object."""
     mem = DeepMemory(Path(db_path))
@@ -29,6 +33,10 @@ def add_memory(
             confidence=confidence,
             source=source,
             expires_at=expires_at,
+            scope=scope,  # type: ignore[arg-type]
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
         )
         return asdict(record)
     finally:
@@ -41,14 +49,40 @@ def search_memory(
     db_path: str = DEFAULT_DB_PATH,
     limit: int = 5,
     kind: MemoryKind | None = None,
+    workspace: str | None = None,
+    include_global: bool = True,
+    cross_workspace: bool = False,
 ) -> list[dict[str, Any]]:
     """Search memories and return scored records as plain JSON objects."""
     mem = DeepMemory(Path(db_path))
     try:
         return [
             {"score": result.score, "record": asdict(result.record)}
-            for result in mem.search(query, limit=limit, kind=kind)
+            for result in mem.search(
+                query,
+                limit=limit,
+                kind=kind,
+                workspace=workspace,
+                include_global=include_global,
+                cross_workspace=cross_workspace,
+                caller="mcp",
+            )
         ]
+    finally:
+        mem.close()
+
+
+def memory_feedback(
+    memory_id: str,
+    helpful: bool,
+    note: str | None = None,
+    *,
+    db_path: str = DEFAULT_DB_PATH,
+) -> dict[str, Any]:
+    """Record whether a retrieved memory helped the caller."""
+    mem = DeepMemory(Path(db_path))
+    try:
+        return asdict(mem.add_feedback(memory_id, helpful=helpful, note=note))
     finally:
         mem.close()
 
@@ -122,6 +156,10 @@ def create_mcp_server():
         confidence: float = 0.8,
         source: str | None = None,
         expires_at: str | None = None,
+        scope: str = "workspace",
+        workspace: str | None = None,
+        tenant: str | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         """Add one memory record to a deep-memory SQLite database."""
         return add_memory(
@@ -132,6 +170,10 @@ def create_mcp_server():
             confidence=confidence,
             source=source,
             expires_at=expires_at,
+            scope=scope,
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
         )
 
     @server.tool(name="search")
@@ -140,9 +182,30 @@ def create_mcp_server():
         db_path: str = DEFAULT_DB_PATH,
         limit: int = 5,
         kind: MemoryKind | None = None,
+        workspace: str | None = None,
+        include_global: bool = True,
+        cross_workspace: bool = False,
     ) -> list[dict[str, Any]]:
-        """Search memory records by query, optionally filtered by memory kind."""
-        return search_memory(db_path=db_path, query=query, limit=limit, kind=kind)
+        """Search memory records by query, optionally filtered by kind and scope."""
+        return search_memory(
+            db_path=db_path,
+            query=query,
+            limit=limit,
+            kind=kind,
+            workspace=workspace,
+            include_global=include_global,
+            cross_workspace=cross_workspace,
+        )
+
+    @server.tool(name="memory_feedback")
+    def _memory_feedback(
+        memory_id: str,
+        helpful: bool,
+        note: str | None = None,
+        db_path: str = DEFAULT_DB_PATH,
+    ) -> dict[str, Any]:
+        """Record whether a retrieved memory was helpful."""
+        return memory_feedback(memory_id, helpful, note, db_path=db_path)
 
     @server.tool(name="stats")
     def _stats(db_path: str = DEFAULT_DB_PATH) -> dict[str, int]:

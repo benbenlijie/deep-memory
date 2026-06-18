@@ -77,6 +77,24 @@ uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrie
 
 The current local-first backend should be recorded when running the command. In this pass the default `local` path is `passed=55/55` (`accuracy=1.0`) on the fixture, compared with the earlier plain SQLite FTS baseline of `passed=24/55` (`accuracy=0.436`), a `+31/55` absolute lift.
 
+## Harder v2 slice and ranking metrics
+
+`evals/data/zh_memory_retrieval_v2.jsonl` adds 20 deterministic multi-memory cases. Every case has at least three memories, an explicit `is_target: true` label, and realistic distractors such as stale preferences, near-duplicate project facts, obsolete commands, and mixed Chinese/English technical terms.
+
+Run it with ranking output:
+
+```bash
+uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --backend local --json
+```
+
+Current checked-in baseline:
+
+- top-k keyword containment: `passed=20/20`, `accuracy=1.0`;
+- top-1 accuracy: `top1_passed=20/20`, `top1_accuracy=1.0`;
+- mean reciprocal rank: `mrr=1.0`.
+
+This v2 slice is still synthetic and intentionally small. It is useful as a cheap CI regression for ranking and distractor robustness, not as proof that the retriever is production-grade across open-domain Chinese memory workloads.
+
 Phase 2 also adds an optional tokenizer backend:
 
 ```bash
@@ -97,4 +115,4 @@ If a future tokenizer or embedding path changes ranking, this file should remain
 
 ## Why this matters
 
-If you退后一步看，中文记忆检索的 bottleneck 不只是“有没有向量库”。真正有趣的问题是：系统能否在中文短文本、高密度事实、相对时间、名字/组织、中英混排和新旧矛盾中稳定找回正确上下文。这个数据集是第一版可执行的测量装置。
+Stepping back, the bottleneck for Chinese memory retrieval is not just “do you have a vector DB”. The harder question is whether the system can reliably recover the right context across Chinese short text, high-density facts, relative time expressions, names and organizations, mixed Chinese/English terms, and old-versus-new contradictions. This dataset is the first executable measuring device for that.

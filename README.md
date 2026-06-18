@@ -1,130 +1,69 @@
 # deep-memory
 
-> 给 AI Agent 装上不会轻易遗忘的大脑：跨会话记忆、自动遗忘、矛盾消解、中文优先，让 Agent 从“金鱼”变成长期伙伴。
->
-> A local-first persistent memory layer for AI agents: cross-session recall, forgetting-aware ranking, conflict candidates, Chinese-first retrieval, and a path from facts to reusable skills.
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+> Local-first memory for AI agents. Inspect what they remember. Decide what they keep.
 
 [![CI](https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-alpha-orange)
 
-`deep-memory` is for developers building agents that need durable, inspectable memory instead of stuffing everything into a longer prompt. The MVP is deliberately small: a Python SDK + CLI backed by SQLite/FTS5, designed so you can add memories, recall them across sessions, inspect the database, and evolve toward richer memory governance.
+Agents forget useful things between sessions. The convention Claude Code just learned is invisible to Codex. The workflow Hermes just proved has to be re-explained in OpenCode. `deep-memory` gives those tools one shared, inspectable memory layer — a SQLite file in your project, no cloud, no transcript scraping, no hidden global state.
 
-真正有趣的问题不是“模型上下文能不能更长”，而是：
+## Highlights
 
-- 什么信息值得被长期保存？
-- 什么时候应该 recall，什么时候应该 forget？
-- 当记忆互相矛盾时，系统如何发现并让人修正？
-- 中文场景下，分词、实体、时间表达和检索质量如何做到可靠？
-- 成功的流程如何从 memory 进一步沉淀成 reusable skills？
+- **Local-first by default.** SQLite in your project. The database is something you can `cp`, `scp`, inspect, back up, or delete. New writes default to workspace scope inferred from the current working directory, while global remains an explicit opt-in.
+- **Cross-agent.** Works with Claude Code, Codex, OpenCode, OpenClaw-style tools, and Hermes through MCP, a CLI wrapper, or explicit JSONL import.
+- **Inspectable.** CLI, Python SDK, and a local WebUI to read, edit, soft-delete, and export every record. No opaque embeddings-only view.
+- **Chinese-first retrieval.** FTS5 with a Chinese bigram fallback, plus an optional `jieba` backend. Measured on a checked-in Chinese retrieval fixture, not just claimed in copy.
+- **Memory governance, not just storage.** Records carry `kind`, `importance`, `confidence`, `source`, timestamps, conflict status, and decay — so memory can be audited, corrected, and aged out.
+- **A path from memory to skill.** Procedural memories can be exported as reviewable skill candidates — never auto-installed as behavior.
 
-## Why developers care
-
-Most agents are still “goldfish”: they can reason within one session, but they lose project conventions, user preferences, prior decisions, and successful procedures between runs. `deep-memory` focuses on the missing infrastructure layer:
-
-| Bottleneck | deep-memory direction |
-| --- | --- |
-| Cross-session context disappears | Local persistent records with source, confidence, importance and timestamps |
-| Vector search alone is not enough | Lifecycle, decay, conflict candidates and inspectability first |
-| Chinese memory quality is under-served | Chinese-first retrieval behavior and future tokenizer/embedding path |
-| Agent learnings stay as chat logs | Procedural memory layer for skills/playbooks |
-| Closed SaaS memory is hard to trust | Local-first SQLite baseline that developers can inspect and edit |
+<p align="center">
+  <img src="docs/assets/deep-memory-architecture.svg" alt="deep-memory architecture" width="920">
+</p>
 
 ## Quickstart
-
-### Install from source today
 
 ```bash
 git clone https://github.com/benbenlijie/deep-memory.git
 cd deep-memory
-uv sync --extra dev
-uv run pytest
+uv sync --extra dev --extra mcp
+
+uv run deep-memory init .deep-memory/deep-memory.db
+uv run deep-memory add .deep-memory/deep-memory.db \
+  "Project convention: run uv run pytest -q before review" \
+  --kind procedural \
+  --importance 0.8
+uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?"
 ```
 
-### Run the 2-minute examples
+If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, the Codex wrapper, safe memory-write rules, and the optional star step when the user approves it.
+
+## Connect your agent
+
+Use MCP when your agent supports it. Use a wrapper when it does not. Either way, point every tool at the same project-local database:
+
+```text
+.deep-memory/deep-memory.db
+```
+
+### Claude Code
 
 ```bash
-uv run python examples/quickstart.py
-uv run python examples/memory_vs_nomemory.py
+claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
 ```
 
-`examples/quickstart.py` shows the smallest local SQLite memory flow: add records,
-inspect stats, and recall a style preference. `examples/memory_vs_nomemory.py`
-prints the same toy agent question with and without persistent memory so the
-behavioral difference is visible immediately.
+Add this to `CLAUDE.md` so the policy is explicit:
 
-### Use the Python API
-
-```python
-from deep_memory import DeepMemory
-
-mem = DeepMemory("agent.db")
-mem.add("用户偏好：中文为主，技术术语用英文", kind="semantic", importance=0.9)
-mem.add("2026-06-16: discussed deep-memory GitHub launch", kind="episodic")
-
-for result in mem.search("用户喜欢什么风格？", limit=3):
-    print(result.score, result.record.kind, result.record.content)
+```markdown
+Before large tasks, search deep-memory for relevant project conventions.
+After verified success, add only durable facts or reusable procedures.
+Never store secrets, raw credentials, or temporary issue status.
 ```
 
-### Use the CLI
-
-```bash
-uv run deep-memory init agent.db
-uv run deep-memory add agent.db "用户偏好：中文为主，技术术语用英文" --kind semantic --importance 0.9
-uv run deep-memory search agent.db "用户偏好"
-uv run deep-memory stats agent.db
-```
-
-### Launch the local memory inspector WebUI
-
-The WebUI is a deliberately small local inspector/editor for SQLite memory files. It
-lists and searches records, edits content/kind/confidence/importance/source, and
-soft-deletes records by marking them `deprecated`.
-
-```bash
-uv run deep-memory webui agent.db --host 127.0.0.1 --port 8765
-# then open http://127.0.0.1:8765
-```
-
-Manual smoke check:
-
-```bash
-uv run deep-memory init /tmp/deep-memory-webui.db
-uv run deep-memory add /tmp/deep-memory-webui.db "用户偏好：中文为主，技术术语用英文" --kind semantic
-uv run python - <<'PY'
-from deep_memory.webui import render_index
-html = render_index('/tmp/deep-memory-webui.db', query='中文')
-assert 'Memory Inspector' in html
-assert '用户偏好：中文为主' in html
-print('webui smoke ok')
-PY
-```
-
-### Import explicit Hermes session facts
-
-Hermes integration starts with a conservative contract: Hermes or an adapter emits explicit durable `facts`, and `deep-memory` persists them as searchable records.
-
-```bash
-cat > /tmp/hermes-session.jsonl <<'JSONL'
-{"session_id":"s_demo","facts":[{"content":"用户偏好：中文为主，技术术语用英文","kind":"semantic","importance":0.9}]}
-{"session_id":"s_demo","facts":[{"content":"成功流程应该沉淀为 skill","kind":"procedural","confidence":0.8}]}
-JSONL
-
-uv run deep-memory hermes-import /tmp/hermes-memory.db /tmp/hermes-session.jsonl
-uv run deep-memory search /tmp/hermes-memory.db "用户偏好"
-uv run deep-memory stats /tmp/hermes-memory.db
-```
-
-See `docs/HERMES_INTEGRATION.md` for the adapter contract, Python API, and end-to-end demo. See `docs/MCP_INTEROPERABILITY.md` for Hermes, Claude Code, and Codex-style MCP client setup plus a reproducible smoke-test transcript.
-
-### Use the MCP server
-
-`deep-memory` exposes a stdio MCP server with three tools: `add`, `search`, and `stats`.
-Install the optional MCP dependency before connecting it to an agent:
-
-```bash
-uv sync --extra mcp --extra dev
-```
-
-Hermes Agent example (`~/.hermes/config.yaml` or the active profile config):
+### Hermes
 
 ```yaml
 mcp_servers:
@@ -134,112 +73,148 @@ mcp_servers:
     timeout: 30
 ```
 
-Claude Code example:
+Hermes should then expose tools such as `mcp_deep_memory_add`, `mcp_deep_memory_search`, and `mcp_deep_memory_stats`.
+
+Hermes can also import explicit facts JSONL:
 
 ```bash
-claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
+cat > /tmp/hermes-session.jsonl <<'JSONL'
+{"session_id":"s_demo","facts":[{"content":"User prefers concise answers with English technical terms","kind":"semantic","importance":0.9}]}
+{"session_id":"s_demo","facts":[{"content":"Successful workflows should become reviewable skill candidates","kind":"procedural","confidence":0.8}]}
+JSONL
+
+uv run deep-memory hermes-import .deep-memory/deep-memory.db /tmp/hermes-session.jsonl
 ```
 
-Manual verification without an MCP client:
+### Codex, OpenCode, and OpenClaw-style agents
+
+Until MCP is wired in, use a wrapper. Search before the task, write only verified facts after:
 
 ```bash
-uv run python - <<'PY'
-from deep_memory.mcp_server import add_memory, search_memory, memory_stats
-
-DB = "/tmp/deep-memory-mcp-smoke.db"
-print(add_memory("用户偏好：中文为主，技术术语用英文", db_path=DB, kind="semantic"))
-print(search_memory("用户偏好", db_path=DB, limit=1))
-print(memory_stats(db_path=DB))
-PY
+MEMORY_DB=.deep-memory/deep-memory.db
+uv run deep-memory search "$MEMORY_DB" "repo conventions for this task"
+# pass the result into the agent as a short "relevant memory" block
+# ...run the agent...
+uv run deep-memory add "$MEMORY_DB" \
+  "Workflow: for this repo, run uv run pytest -q and uv run ruff check . before review" \
+  --kind procedural \
+  --importance 0.8 \
+  --source codex:manual
 ```
 
-Expected shape:
+For the full adapter surface — integration points, read/write paths, permissions, risks — see [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and the per-agent commands in [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md).
 
-```text
-initialized agent.db
-{
-  "working": 0,
-  "episodic": 0,
-  "semantic": 1,
-  "procedural": 0,
-  "total": 1
-}
+## Inspect memory
+
+```bash
+uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 8765
+# open http://127.0.0.1:8765
 ```
 
-Note: package publishing is on the roadmap. Until the first PyPI release, use the source install above rather than `pip install deep-memory`.
+The WebUI can list, search, edit, and soft-delete records. It binds to `127.0.0.1` by default.
 
-## 6-line integration
+Export and audit:
+
+```bash
+uv run deep-memory export .deep-memory/deep-memory.db                      # active records only
+uv run deep-memory export .deep-memory/deep-memory.db --include-deprecated # audit / backup
+uv run deep-memory hard-delete .deep-memory/deep-memory.db <memory-id>     # physically remove one record
+```
+
+## Python API
 
 ```python
 from deep_memory import DeepMemory
 
-mem = DeepMemory("agent.db")
-mem.add("user prefers concise Chinese answers", kind="semantic", importance=0.9)
-mem.add("2026-06-16: discussed deep-memory GitHub launch", kind="episodic")
+mem = DeepMemory(".deep-memory/deep-memory.db")
+mem.add("User prefers concise answers with English technical terms", kind="semantic", importance=0.9)
+mem.add("Project convention: use uv for tests", kind="procedural", importance=0.8)
 
-print(mem.search("用户喜欢什么风格？", limit=3))
+for result in mem.search("how should this repo be tested?", limit=3):
+    print(result.score, result.record.kind, result.record.content)
 ```
 
-## Current MVP features
+## What works today
 
-- [x] SQLite local-first persistence
-- [x] L2/L3/L4 memory records with source, confidence, importance and timestamps
-- [x] FTS5 lexical retrieval plus local-first Chinese fallback: ASCII word preservation, Chinese phrase/bigram tokens, and token-overlap supplementation
-- [x] Forgetting-curve-inspired decay score
-- [x] Conflict candidate detection through simple key/entity overlap
-- [x] Python API + CLI + tests + GitHub Actions CI
-- [ ] Chinese tokenizer + embedding retrieval
-- [ ] Web memory inspector/editor
-- [x] Hermes adapter MVP: explicit session facts JSONL → `deep-memory` records
-- [x] MCP server adapter (stdio, optional `mcp` extra)
-- [ ] Memory → Skill generation
+| Area | Status | Notes |
+| --- | --- | --- |
+| Local persistence | Implemented | SQLite DB controlled by the user or project. |
+| Search | Implemented | FTS5 plus local Chinese/English token fallback. |
+| Optional Chinese tokenizer | Implemented | `jieba` backend via `uv sync --extra retrieval`. |
+| Metadata | Implemented | `kind`, `importance`, `confidence`, `source`, timestamps, conflict states. |
+| Conflict handling | Implemented | Candidate, resolved, superseded, deprecated. |
+| Python SDK + CLI | Implemented | `add`, `search`, `stats`, `conflicts`, `resolve-conflict`, `export`, `hard-delete`, `hermes-import`, `webui`. |
+| MCP server | Implemented | Stdio tools for `add`, `search`, `stats`, and conflict helpers. |
+| Hermes import | Implemented | Explicit session facts JSONL to `deep-memory` records. |
+| Local WebUI MVP | Implemented | Inspect, search, edit, and soft-delete memory records. |
+| Memory to skill candidate | Implemented | Exports procedural memories as reviewable skill markdown; no auto-install. |
+| Codex wrapper MVP | Implemented | `deep-memory codex-run` injects bounded context and imports only explicit `--facts-out` JSONL after success. |
+| Native adapters for every agent | Spec / prototype | Use MCP or wrapper first. See `docs/ADAPTERS.md`. |
+| Vector retrieval / hosted sync | Roadmap | Later, if evals and privacy boundaries justify it. |
+
+## Evidence
+
+These evals are small. They are regression checks, not a claim that memory is solved.
+
+| Evaluation | Current checked-in result | Reproduce |
+| --- | --- | --- |
+| Chinese retrieval v1 | 55/55 with default local backend; 55/55 with optional `jieba`; earlier plain SQLite FTS baseline was 24/55 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl` |
+| Chinese retrieval v2 | 20/20 harder multi-memory cases with distractors; local top-1 accuracy 1.0 and MRR 1.0 in this checked-in baseline | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json` |
+| Memory benchmark v0 | 20 bilingual tasks; no-memory baseline 0/20; `deep-memory` should pass at least 16/20 in tests and usually 20/20 with the default retrieval limit | `uv run python benchmarks/memory_benchmark.py` |
+| Test suite | Covered by pytest and CI | `uv run pytest -q` |
+
+Details: [`docs/CHINESE_RETRIEVAL_EVAL.md`](docs/CHINESE_RETRIEVAL_EVAL.md), [`docs/MEMORY_BENCHMARK.md`](docs/MEMORY_BENCHMARK.md).
 
 ## Architecture
 
 ```text
-agent event stream
-  -> memory extractor
-  -> memory engine
-  -> SQLite / vector / graph stores
-  -> retrieval planner
-  -> agent context injector
+agent or developer
+  -> explicit facts / procedures / project conventions
+  -> DeepMemory SDK, CLI, MCP, or adapter
+  -> local SQLite + FTS5
+  -> ranked recall for future agent context
+  -> WebUI, export, evals, and skill candidates
 ```
 
-The first implementation is intentionally boring at the storage layer. The key bottleneck is not distributed storage; it is memory governance: deciding what to remember, how to represent it, how it decays, how contradictions are detected, and how users stay in control.
+SQLite is boring on purpose. It is easy to install, inspect, test, back up, and replace later. Vector retrieval stays on the roadmap with schema placeholders and an opt-in migration path; see [`docs/VECTOR_ROADMAP.md`](docs/VECTOR_ROADMAP.md).
 
-See `docs/ARCHITECTURE.md` for the system model and `docs/ROADMAP.md` for the 100k-star wedge.
+Read more:
 
-## Project direction
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/SAFETY_AND_PRIVACY.md`](docs/SAFETY_AND_PRIVACY.md)
+- [`docs/MEMORY_POLICY.md`](docs/MEMORY_POLICY.md)
+- [`docs/MCP_INTEROPERABILITY.md`](docs/MCP_INTEROPERABILITY.md)
+- [`docs/ADAPTERS.md`](docs/ADAPTERS.md)
+- [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- [`docs/VECTOR_ROADMAP.md`](docs/VECTOR_ROADMAP.md)
 
-The long-term target is to become the default open-source persistent memory layer for AI agents:
+## Safety boundary
 
-1. Foundation memory: local SDK, CLI, tests, transparent records.
-2. Memory governance: Chinese retrieval, importance scoring, forgetting, conflict resolution.
-3. Agent ecosystem: Hermes plugin, Claude Code/Codex/OpenCode adapters, MCP server.
-4. Memory × skills: successful procedures become reusable playbooks, not just snippets.
+Persistent memory changes future behavior. Keep the default narrow:
+
+- store explicit durable facts, not raw transcripts;
+- use local SQLite by default;
+- retrieve a small relevant context block;
+- retrieval telemetry (queries, hit memories, caller type) is local-only and can be disabled with `DEEP_MEMORY_TELEMETRY=off` — see [`docs/SAFETY_AND_PRIVACY.md`](docs/SAFETY_AND_PRIVACY.md);
+- never store secrets, private keys, auth cookies, raw credentials, or temporary task status;
+- write procedural memories only after tests, review, or user confirmation;
+- auto-backup destructive operations with a configurable 7-day TTL;
+- export skill candidates for review instead of auto-installing them.
+
+Read [`docs/MEMORY_POLICY.md`](docs/MEMORY_POLICY.md) for the allow / deny / requires-confirmation write policy, and [`docs/SAFETY_AND_PRIVACY.md`](docs/SAFETY_AND_PRIVACY.md) before adding automatic writes or shared team memory.
 
 ## Contributing
 
-This project is early. Good first contributions are especially valuable around:
 
-- Chinese tokenization and retrieval evaluation;
-- memory schemas and conflict-resolution examples;
-- CLI ergonomics and test coverage;
-- Hermes/MCP/agent integrations;
-- small reproducible benchmarks comparing agents with and without memory.
+For now this should be treated as a controlled preview lane, not a broad launch lane. The public backlog below is intentionally framed around small, verifiable contributions and the remaining blockers that keep the launch gate honest.
 
-## Memory benchmark
+- `good first issue`: small fixtures, docs fixes, CLI output polish, and reproducible failure cases;
+- `adapter`: smoke transcripts and wrapper/MCP compatibility notes for Claude Code, Codex, OpenCode, OpenClaw-style tools, and Hermes;
+- `eval`: Chinese retrieval, privacy-boundary, memory/no-memory, and Memory × Skill regression cases;
+- `governance`: write policy, consent, export/delete, and conflict-lifecycle checks;
+- `docs`: quickstarts, troubleshooting, glossary, and contribution paths.
 
-The repository includes a first retrieval-value benchmark at `benchmarks/fixtures/memory_benchmark_v0.json` and `benchmarks/memory_benchmark.py`. It compares a no-memory baseline against a fresh `DeepMemory` database on 20 bilingual tasks where the answer depends on remembered user/project facts.
-
-```bash
-uv run python benchmarks/memory_benchmark.py
-uv run python benchmarks/memory_benchmark.py --json
-```
-
-See `docs/MEMORY_BENCHMARK.md` for the metric, fixture schema, and reproduction notes.
-
-Read `CONTRIBUTING.md` before opening a PR. For contribution lanes, good-first-issue ideas, label conventions, and the path for new backends/adapters, see `docs/COMMUNITY.md`.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), and [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md).
 
 ## License
 

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from deep_memory.core import DeepMemory, MemoryKind, MemoryRecord
+from deep_memory.core import DeepMemory, MemoryKind, MemoryRecord, build_idempotency_key
 
 DEFAULT_HERMES_SOURCE = "hermes"
 VALID_KINDS: set[str] = {"working", "episodic", "semantic", "procedural"}
@@ -21,6 +22,11 @@ class HermesFact:
     importance: float = 0.7
     confidence: float = 0.8
     source: str = DEFAULT_HERMES_SOURCE
+    workspace: str | None = None
+    tenant: str | None = None
+    user_id: str | None = None
+    agent: str | None = DEFAULT_HERMES_SOURCE
+    event_time: str | None = None
 
 
 def iter_hermes_facts(session_jsonl: str | Path) -> Iterator[HermesFact]:
@@ -63,6 +69,22 @@ def write_hermes_session_facts(
                     importance=fact.importance,
                     confidence=fact.confidence,
                     source=fact.source,
+                    scope="workspace" if fact.workspace else ("tenant" if fact.tenant else "user" if fact.user_id else "global"),
+                    workspace=fact.workspace,
+                    tenant=fact.tenant,
+                    user_id=fact.user_id,
+                    agent=fact.agent,
+                    event_time=fact.event_time,
+                    idempotency_key=build_idempotency_key(
+                        fact.content,
+                        kind=fact.kind,
+                        source=fact.source,
+                        workspace=fact.workspace,
+                        tenant=fact.tenant,
+                        user_id=fact.user_id,
+                        agent=fact.agent,
+                    ),
+                    duplicate_policy="skip",
                 )
             )
     finally:
@@ -73,6 +95,13 @@ def write_hermes_session_facts(
 def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
     session_id = str(event.get("session_id") or event.get("session") or "").strip()
     default_source = f"{DEFAULT_HERMES_SOURCE}:{session_id}" if session_id else DEFAULT_HERMES_SOURCE
+    raw_context = event.get("context")
+    context = cast(dict[str, Any], raw_context) if isinstance(raw_context, dict) else {}
+    default_workspace = _optional_str(event.get("workspace") or context.get("workspace"))
+    default_tenant = _optional_str(event.get("tenant") or context.get("tenant"))
+    default_user_id = _optional_str(event.get("user_id") or context.get("user_id"))
+    default_agent = _optional_str(event.get("agent") or context.get("agent")) or DEFAULT_HERMES_SOURCE
+    default_event_time = _event_time_from_event(event, context)
     facts = event.get("facts") or []
     if not isinstance(facts, list):
         return
@@ -84,12 +113,22 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
             importance = 0.7
             confidence = 0.8
             source = default_source
+            workspace = default_workspace
+            tenant = default_tenant
+            user_id = default_user_id
+            agent = default_agent
+            event_time = default_event_time
         elif isinstance(raw, dict):
             content = str(raw.get("content") or raw.get("text") or "")
             kind = _memory_kind(raw.get("kind", "semantic"))
             importance = float(raw.get("importance", 0.7))
             confidence = float(raw.get("confidence", 0.8))
             source = str(raw.get("source") or default_source)
+            workspace = _optional_str(raw.get("workspace") or default_workspace)
+            tenant = _optional_str(raw.get("tenant") or default_tenant)
+            user_id = _optional_str(raw.get("user_id") or default_user_id)
+            agent = _optional_str(raw.get("agent") or default_agent)
+            event_time = _optional_str(raw.get("event_time") or raw.get("timestamp") or raw.get("created_at")) or default_event_time
         else:
             continue
 
@@ -102,7 +141,34 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
             importance=importance,
             confidence=confidence,
             source=source,
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
+            agent=agent,
+            event_time=event_time,
         )
+
+
+def _event_time_from_event(event: dict[str, Any], context: dict[str, Any]) -> str | None:
+    raw = event.get("timestamp") or event.get("created_at") or event.get("session_timestamp")
+    raw = raw or context.get("timestamp") or context.get("created_at") or context.get("session_timestamp")
+    text = _optional_str(raw)
+    if text is None:
+        return None
+    try:
+        if text.isdigit():
+            return datetime.fromtimestamp(int(text), tz=timezone.utc).isoformat()
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _optional_str(value: object) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None
 
 
 def _memory_kind(value: object) -> MemoryKind:

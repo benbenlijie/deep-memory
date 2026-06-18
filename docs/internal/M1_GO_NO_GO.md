@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Go for controlled preview**, not broad HN-scale launch yet.
+**Conditional GO for controlled preview**, not broad HN-scale launch yet.
 
 ## Evidence inspected
 
@@ -30,9 +30,9 @@ Current evidence: full test suite passes, lint passes, examples run, benchmark v
 
 The benchmark is still synthetic and easy. Chinese retrieval needs a dedicated dataset and baseline before the strongest differentiation claim is public.
 
-## Follow-up fix cards / next loop
+## Remaining preview blockers / next loop
 
-- Chinese retrieval evaluation dataset v1.
-- Chinese retrieval baseline.
-- Adapter specs.
-- WebUI trust spec.
+- Keep the launch narrative explicitly framed as controlled preview.
+- Verify the launch path in smoke -> scope tests -> full pytest + ruff order before broadening claims.
+- Chinese retrieval evaluation dataset v1 + baseline before any stronger differentiation claim.
+- Adapter specs and WebUI trust spec remain part of the next credibility loop.

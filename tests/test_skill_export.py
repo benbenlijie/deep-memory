@@ -47,6 +47,9 @@ def test_successful_workflow_exports_procedural_candidate_with_evidence_and_safe
     assert "high confidence" in candidate.trigger_reasons
     assert "recurrence likely" in candidate.trigger_reasons
     assert "Auto-install: no" in candidate.markdown
+    assert "state: `candidate`" in candidate.markdown
+    assert "install_boundary: `review_required`" in candidate.markdown
+    assert "Human review checklist" in candidate.markdown
     assert "Two previously blocked cards" in candidate.markdown
     assert "Kanban workers can hit protocol violations" in candidate.markdown
     assert "Do not include credentials, tokens, raw PII, or stale task IDs" in candidate.markdown

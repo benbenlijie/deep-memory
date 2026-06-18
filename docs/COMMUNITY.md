@@ -1,8 +1,9 @@
 # Community Architecture
 
-`deep-memory` should become an ecosystem, not a single-maintainer repository. The community model is deliberately lane-based: each lane has a clear boundary, a small first contribution path, and a way to graduate into deeper ownership.
 
-If you退后一步看，the root problem is not “more contributors”. The root problem is representation: contributors need to see where their work fits in the memory system, how to test it, and what kind of evidence makes a change credible.
+This repository is in controlled preview for the public launch track, not broad launch. The backlog below is written to keep the gate honest: small contributions, explicit verification, and remaining blockers called out clearly.
+
+Stepping back, the root problem is not “more contributors” — it is representation. Contributors need to see where their work fits in the memory system, how to test it, and what kind of evidence makes a change credible.
 
 ## Contribution principles
 
@@ -12,54 +13,39 @@ If you退后一步看，the root problem is not “more contributors”. The roo
 - Chinese-first retrieval is a benchmark target, not just README positioning.
 - New integrations should preserve user control: explicit writes, inspectable sources, and safe handling of private data.
 
-## Community lanes
+## M+12 cross-agent ecosystem phase
 
-| Lane | System boundary | Good first issues | Deeper ownership path | Evidence expected |
-| --- | --- | --- | --- | --- |
-| Retrieval | Query parsing, FTS5, Chinese fallback, future tokenizer/embedding/hybrid retrieval | Add Chinese/English mixed-query fixtures; document a failed recall; add recall@k examples | Own retrieval benchmark design and retrieval strategy changes | `uv run pytest tests/test_core.py` plus benchmark/eval output when ranking changes |
-| Adapters | Hermes, MCP, Claude Code, Codex, OpenCode and future agent runtimes | Add a redacted session fixture; improve adapter docs; add runtime-specific smoke tests | Own one runtime adapter and its compatibility matrix | Adapter unit tests, manual command transcript, privacy notes |
-| UI | Future CLI inspector, web memory editor, graph/timeline visualizer | Improve CLI output labels; add screenshots/mockups; design record correction flows | Own memory inspection and correction UX | Screenshot/demo, before/after CLI output, usability notes |
-| Evals | Memory failure cases, retrieval metrics, memory/no-memory comparisons, Memory × Skill evals | Convert one issue into an eval fixture; add a baseline row; categorize a failure mode | Own public benchmark and leaderboard methodology | Dataset diff, metric script output, failure taxonomy update |
-| Docs | README, architecture, roadmap, integration guides, release notes | Fix quickstart gaps; add troubleshooting notes; translate examples; tighten contribution docs | Own documentation information architecture | Link check or manual command transcript; docs reviewed against current code |
+The next public phase is not “add every integration.” It is to make the
+repository easy to extend without weakening the memory-governance model.
+Contributors should treat each lane as a small environment: define the contract,
+add a fixture or transcript, run the verification command, and document the
+safety boundary.
 
-## Suggested good-first-issue backlog
+Primary lanes:
 
-Use labels from the proposal below so newcomers can filter by lane and difficulty.
+- `good first issue`: narrow docs, fixture, CLI output, or reproducible-failure
+  tasks that do not require architecture decisions.
+- `help wanted`: useful work that needs domain context, maintainer review, or
+  cross-file coordination.
+- `adapter`: runtime-specific wrappers, MCP setup docs, redacted transcripts,
+  and compatibility notes.
+- `eval`: retrieval fixtures, privacy-boundary cases, memory/no-memory checks,
+  and benchmark reporting.
+- `governance`: write policy, consent, export/delete, conflict lifecycle, and
+  review checklists.
+- `docs`: quickstarts, troubleshooting, contribution paths, glossary, and
+  release-facing explanations.
 
-### Retrieval
+Use [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md) as the public backlog. Each
+item there has acceptance criteria and suggested commands so a contributor can
+know when the work is credible.
 
-- Add 10 Chinese user-preference recall fixtures covering aliases, time expressions, and mixed Chinese/English technical terms.
-- Add a minimal `recall@k` script for the existing SQLite/FTS5 + Chinese bigram fallback.
-- Document one reproducible wrong-recall case using a small local database.
-- Add tests for queries containing punctuation-heavy Chinese developer text.
+## Suggested backlog
 
-### Adapters
-
-- Add a redacted Hermes JSONL fixture for `write_hermes_session_facts`.
-- Add an MCP smoke-test transcript that a maintainer can run manually.
-- Propose the minimal contract for a Claude Code / Codex / OpenCode adapter: input events, extracted facts, source strings, and error handling.
-- Add adapter documentation for how private data should be redacted before filing issues.
-
-### UI
-
-- Improve `deep-memory search` output so record id, kind, score, source, and conflict status are easy to scan.
-- Add a CLI design note for `deep-memory inspect`, `edit`, `delete`, and `export` commands.
-- Create a low-fidelity mockup for a memory timeline / conflict resolution screen.
-- Add examples showing how a deprecated or superseded memory should appear to a user.
-
-### Evals
-
-- Turn one `Memory failure case` issue into a JSON/JSONL fixture.
-- Add an eval category for “should not remember / privacy boundary”.
-- Add a memory/no-memory example with a measurable success criterion instead of only qualitative output.
-- Add baseline metric documentation for lexical FTS, Chinese bigram fallback, tokenizer retrieval, embedding retrieval, and hybrid retrieval.
-
-### Docs
-
-- Add a “choose your contribution lane” section to `CONTRIBUTING.md`.
-- Add troubleshooting for `uv sync`, `uv run pytest`, and optional MCP dependencies.
-- Add a glossary for working memory, episodic memory, semantic memory, procedural memory, conflict candidate, superseded, and deprecated.
-- Add one complete backend-adapter walkthrough from design to tests.
+The issue-sized backlog now lives in [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md).
+Keep this document focused on community architecture and contribution paths;
+keep the backlog document focused on concrete tasks, acceptance criteria, and
+verification commands.
 
 ## Issue templates proposal
 
@@ -73,7 +59,7 @@ The repo already has a `Memory failure case` issue template. The next useful tem
    - Test plan and maintenance owner.
 
 2. `Good first issue`
-   - Lane: retrieval / adapters / UI / evals / docs.
+   - Lane: good-first-issue / help-wanted / adapter / eval / governance / docs.
    - Why it matters.
    - Files likely touched.
    - Acceptance checklist.
@@ -103,6 +89,7 @@ The repo already has a `Memory failure case` issue template. The next useful tem
 - `lane:adapters`
 - `lane:ui`
 - `lane:evals`
+- `lane:governance`
 - `lane:docs`
 
 ### Difficulty labels
@@ -187,4 +174,4 @@ uv run ruff check src tests
 3. Choose a `good first issue` with a narrow acceptance checklist.
 4. Open a small PR with evidence: tests run, files changed, and any remaining uncertainty.
 
-真正有趣的问题是 whether the repository can turn real memory failures into shared infrastructure. That is the community loop: report a failure, encode it as an eval, improve the mechanism, and document the path so the next contributor can go deeper.
+The interesting question is whether the repository can turn real memory failures into shared infrastructure. That is the community loop: report a failure, encode it as an eval, improve the mechanism, and document the path so the next contributor can go deeper.

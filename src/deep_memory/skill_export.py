@@ -50,6 +50,12 @@ description: Skill candidate extracted from verified procedural memory.
 - importance: `{record.importance}`
 - Auto-install: no
 
+## Activation status
+
+- state: `candidate`
+- install_boundary: `review_required`
+- rollback_boundary: `remove_or_disable_installed_skill_if_later_activated`
+
 ## Trigger reasons
 
 {_markdown_bullets(trigger_reasons)}
@@ -66,6 +72,14 @@ Use this when a similar situation recurs and the original procedure has been ver
 ## Evidence
 
 {_markdown_bullets(evidence_items) if evidence_items else "- Evidence must be attached before promotion to an installed skill."}
+
+## Human review checklist
+
+- Confirm this is a reusable procedure, not a one-off fact, status update, or preference.
+- Confirm evidence is concrete enough to justify activation.
+- Confirm secrets, tokens, raw PII, stale task IDs, and temporary project status are absent.
+- Confirm the candidate has clear when-to-use, verification, and rollback boundaries.
+- Confirm installation will happen only through the normal reviewed skill-management path.
 
 ## Safety boundaries
 

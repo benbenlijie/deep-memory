@@ -100,6 +100,7 @@ def persist_extracted_memories(
     *,
     conversation_id: str,
     extractor_version: str,
+    event_time: str | None = None,
 ) -> list[MemoryRecord]:
     """Store extracted L2/L3/L4 records in the current DeepMemory backend."""
 
@@ -111,6 +112,7 @@ def persist_extracted_memories(
             importance=memory.importance,
             confidence=memory.confidence,
             source=source,
+            event_time=event_time,
         )
         for memory in memories
     ]
@@ -129,8 +131,18 @@ def extract_and_persist(
         output.memories,
         conversation_id=output.conversation_id,
         extractor_version=output.extractor_version,
+        event_time=_event_time_from_extraction_input(extraction_input),
     )
     return output, records
+
+
+def _event_time_from_extraction_input(extraction_input: ConversationExtractionInput) -> str | None:
+    for key in ("timestamp", "created_at", "session_timestamp"):
+        value = extraction_input.metadata.get(key)
+        if value:
+            return value
+    message_times = [message.created_at for message in extraction_input.messages if message.created_at]
+    return min(message_times) if message_times else None
 
 
 def _extract_from_message(content: str, message_ref: str) -> list[ExtractedMemory]:
