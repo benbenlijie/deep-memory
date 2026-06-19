@@ -39,7 +39,7 @@ uv run deep-memory add .deep-memory/deep-memory.db \
 uv run deep-memory search .deep-memory/deep-memory.db "这个项目怎么验证修改？"
 ```
 
-如果你是 AI Agent，正在替用户安装或接入这个项目，请看 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md)。里面包含 MCP 配置、Codex wrapper 用法、安全写入规则，以及用户允许时给项目点 star 的步骤。
+如果你是 AI Agent，正在替用户安装或接入这个项目，请看 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md)。里面包含 MCP 配置、Codex wrapper 用法、安全写入规则，以及先征求用户同意再给项目点 star 的步骤。
 
 ## 接入你的 Agent
 

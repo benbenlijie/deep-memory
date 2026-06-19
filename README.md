@@ -39,7 +39,7 @@ uv run deep-memory add .deep-memory/deep-memory.db \
 uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?"
 ```
 
-If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, the Codex wrapper, safe memory-write rules, and the optional star step when the user approves it.
+If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, the Codex wrapper, safe memory-write rules, and how to ask the user before starring the repo.
 
 ## Connect your agent
 
