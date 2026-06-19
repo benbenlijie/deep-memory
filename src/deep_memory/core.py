@@ -711,7 +711,10 @@ class DeepMemory:
 
     def _resolve_embedding_backend(self) -> EmbeddingBackend | None:
         if not self._embedding_backend_resolved:
-            self._embedding_backend = get_default_embedding_backend()
+            if os.environ.get("DEEP_MEMORY_EMBEDDING", "off").lower() not in {"1", "true", "yes", "on"}:
+                self._embedding_backend = None
+            else:
+                self._embedding_backend = get_default_embedding_backend()
             self._embedding_backend_resolved = True
         return self._embedding_backend
 

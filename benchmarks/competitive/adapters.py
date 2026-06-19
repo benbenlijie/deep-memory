@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
-import shutil
-import subprocess
-import sys
+from importlib import metadata
 from pathlib import Path
 from time import perf_counter
 
@@ -27,7 +25,8 @@ class DeepMemoryAdapter(BaseAdapter):
             self.mem.close()
         if self.db_path.exists():
             self.db_path.unlink()
-        self.mem = DeepMemory(self.db_path)
+        self.mem = DeepMemory(self.db_path, embedding_backend=None)
+        self.mem._embedding_backend_resolved = True
 
     def add(self, item: MemoryItem) -> None:
         assert self.mem is not None
@@ -109,7 +108,7 @@ class ImportOnlyAdapter(BaseAdapter):
         return AdapterStats(
             record_count=len(self._records),
             ram_bytes=_rss_bytes(),
-            package_count=_package_count(self.spec.package_name),
+            package_count=_package_count(self.spec.package_name) if self.spec.package_name else None,
             install_bytes=_distribution_size(self.spec.package_name),
             extra={
                 "import_available": self.import_available,
@@ -174,8 +173,8 @@ def _rss_bytes() -> int | None:
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     except Exception:
         return None
-    # Linux reports KiB, macOS bytes. This benchmark runs on Linux in CI/dev.
-    return int(rss * 1024 if sys.platform.startswith("linux") else rss)
+    # resource.ru_maxrss is KiB on Linux. This project benchmark is Linux/CI oriented.
+    return int(rss * 1024)
 
 
 def _path_size(path: Path) -> int:
@@ -191,24 +190,22 @@ def _path_size(path: Path) -> int:
 
 
 def _package_count(package_name: str | None = None) -> int | None:
-    command = [sys.executable, "-m", "pip", "freeze"]
-    result = subprocess.run(command, text=True, capture_output=True, check=False)
-    if result.returncode != 0:
+    try:
+        distributions = list(metadata.distributions())
+    except Exception:
         return None
-    packages = [line for line in result.stdout.splitlines() if line.strip()]
     if package_name is None:
-        return len(packages)
-    # pip freeze does not expose transitive closure; report environment package count when installed.
-    installed = any(line.lower().startswith(package_name.lower().replace("_", "-") + "==") for line in packages)
-    return len(packages) if installed else None
+        return len(distributions)
+    normalized_target = package_name.lower().replace("_", "-")
+    installed = any(
+        (dist.metadata["Name"] or "").lower().replace("_", "-") == normalized_target
+        for dist in distributions
+    )
+    return len(distributions) if installed else None
 
 
 def _distribution_size(package_name: str | None) -> int | None:
     if not package_name:
-        return None
-    try:
-        from importlib import metadata
-    except Exception:
         return None
     try:
         dist = metadata.distribution(package_name)

@@ -44,11 +44,11 @@ Model2Vec/static embeddings are attractive for latency, but this stage is about 
 
 ## Implementation notes
 
-- New optional extra: `vector = ["sentence-transformers>=3.0.0"]`.
+- New optional extra: `vector = ["sentence-transformers>=3.0.0", "torch>=2.1.0"]` with uv pinned to the CPU PyTorch index to avoid pulling large CUDA wheels by default.
 - New module: `src/deep_memory/embeddings.py` with an `EmbeddingBackend` protocol.
 - New table: `memory_embeddings(memory_id, embedding BLOB, model_name, model_version, dim, created_at)`.
-- `DeepMemory.add()` attempts to generate/store an embedding when a vector backend is available.
-- Without the vector extra, `add()` silently skips embeddings and FTS5 search still works.
+- `DeepMemory.add()` attempts to generate/store an embedding when a vector backend is explicitly configured or `DEEP_MEMORY_EMBEDDING=on` is set.
+- Without the vector extra, or with embeddings disabled, `add()` silently skips embeddings and FTS5 search still works.
 - Embedding metadata is mirrored on `memories.embedding_model` and `memories.embedding_version` for schema compatibility with M+13.
 
 ## Minimal validation performed
