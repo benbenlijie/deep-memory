@@ -35,6 +35,10 @@
   <img src="docs/assets/deep-memory-architecture.svg" alt="deep-memory architecture" width="920">
 </p>
 
+<p align="center">
+  <img src="docs/assets/webui-memory-inspector.png" alt="deep-memory WebUI memory inspector screenshot" width="920">
+</p>
+
 ## Choose the path that fits what you need
 
 | If you are... | Start here | What you get |
@@ -54,7 +58,7 @@ Most agent memory fails in one of two ways: it forgets everything useful between
 
 - **Cross-agent continuity.** One shared memory layer for Claude Code, Codex, OpenCode, and Hermes, so useful conventions do not have to be re-taught from scratch.
 - **Inspectable by default.** Read, edit, export, soft-delete, hard-delete, and audit records through the CLI, Python SDK, or local WebUI.
-- **Machine-local governance.** One local SQLite store can be shared across agents, while explicit scopes keep records bounded to users, workspaces, projects, or workflows.
+- **Machine-local governance.** One local SQLite store can be shared across agents, while explicit scopes keep records bounded to users, workspaces, projects, workflows, or tenants.
 - **Chinese retrieval as a first-class path.** FTS5 plus local Chinese/English token fallback, optional `jieba`, and checked-in Chinese retrieval fixtures make the claim measurable instead of decorative.
 - **Memory to skill candidate export.** Procedural memory can be exported as reviewable skill candidates, so successful workflows become auditable artifacts instead of silently turning into behavior rules.
 - **Regression-tested retrieval.** Checked-in evals cover Chinese retrieval, bilingual memory/no-memory tasks, and the core CLI/SDK behavior.
@@ -65,7 +69,7 @@ That control surface matters because a useful memory layer needs more than stora
 
 - **Inspectability.** Humans should be able to see what an agent will carry forward.
 - **Deletion.** Wrong, stale, private, or unsafe records must be removable, not merely hidden by ranking.
-- **Scoping.** Machine-level memory should stay relevant through explicit user, workspace, project, and workflow scopes.
+- **Scoping.** Machine-level memory should stay relevant through explicit user, workspace, project, workflow, and tenant scopes.
 - **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
 
 ## Quickstart
@@ -81,7 +85,24 @@ Agent checklist:
 4. Verify that one durable memory can be written and retrieved.
 5. Report which scopes you configured (for example: global, workspace, or project).
 
-For agents or advanced users who want the minimal command path:
+### Prerequisites
+
+- Python 3.10–3.12 (`requires-python = >=3.10,<3.13` in `pyproject.toml`)
+- [`uv`](https://docs.astral.sh/uv/) for environment sync and command execution
+- Optional extras depending on what you want:
+  - `dev`: pytest + ruff for local verification
+  - `mcp`: the `deep-memory-mcp` server for MCP-native agent integrations
+  - `retrieval`: optional `jieba` tokenizer for higher-fidelity Chinese segmentation
+
+Install `uv` if you do not already have it:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Zero-config first run
+
+If you just want to prove the mechanism works before wiring any agent, this path gives you one local DB, one durable memory, and one retrieval roundtrip:
 
 ```bash
 uv sync --extra dev --extra mcp
@@ -91,6 +112,13 @@ uv run deep-memory add ~/.deep-memory/deep-memory.db \
   --kind semantic \
   --importance 0.8
 uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory"
+```
+
+Expected CLI shape:
+
+```text
+$ uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory"
+score=...  kind=semantic  scope=global  content=User wants agents to use deep-memory as shared persistent memory
 ```
 
 This is the core loop: install one machine-local memory store, let agents share it, and keep records bounded with explicit scopes.
@@ -142,7 +170,14 @@ Use MCP when your agent supports it. Use a wrapper when it does not. Either way,
 ~/.deep-memory/deep-memory.db
 ```
 
-### Claude Code
+| Agent | Integration path | Config file / touchpoint | Difficulty |
+| --- | --- | --- | --- |
+| Claude Code | MCP | `CLAUDE.md` + Claude MCP config | Easy |
+| Hermes | MCP | `~/.hermes/config.yaml` | Easy |
+| Codex / OpenCode / OpenClaw-style tools | Wrapper first, MCP later | task wrapper / launch script | Medium |
+
+<details>
+<summary>Claude Code setup</summary>
 
 ```bash
 claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
@@ -156,7 +191,10 @@ After verified success, add only durable facts or reusable procedures.
 Never store secrets, raw credentials, or temporary issue status.
 ```
 
-### Hermes
+</details>
+
+<details>
+<summary>Hermes setup</summary>
 
 ```yaml
 mcp_servers:
@@ -179,7 +217,10 @@ JSONL
 uv run deep-memory hermes-import ~/.deep-memory/deep-memory.db /tmp/hermes-session.jsonl
 ```
 
-### Codex, OpenCode, and OpenClaw-style agents
+</details>
+
+<details>
+<summary>Codex, OpenCode, and OpenClaw-style wrapper setup</summary>
 
 Until MCP is wired in, use a wrapper. Search before the task, write only verified facts after:
 
@@ -195,17 +236,26 @@ uv run deep-memory add "$MEMORY_DB" \
   --source codex:manual
 ```
 
+</details>
+
+<details>
+<summary>Full adapter references</summary>
+
 For the full adapter surface — integration points, read/write paths, permissions, risks — see [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and the per-agent commands in [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md).
+
+</details>
 
 ## Memory scopes
 
 `deep-memory` is machine-local by default, but records can still be bounded explicitly:
 
-- **global** — durable user preferences and long-lived facts that should follow every workflow on the machine.
-- **user** — facts tied to one user identity when multiple people share a host.
-- **workspace** — shared working context across related repos or folders.
-- **project** — repo-specific conventions and procedures.
-- **tenant** — team or environment partitioning when one database serves more than one lane.
+| Scope | Primary use | Typical content | Cross-project? |
+| --- | --- | --- | --- |
+| `global` | Long-lived facts that should follow the whole machine | durable user preferences, stable conventions, machine-level policy | Yes |
+| `user` | Per-user partitioning on shared hosts | one person's preferences, role, language, recurring workflow habits | Sometimes |
+| `workspace` | Shared context across related repos or folders | adjacent project notes, shared build/test conventions, multi-repo context | Sometimes |
+| `project` | Repo-specific memory | repository conventions, local architecture facts, review checklists | No |
+| `tenant` | Team / environment isolation | org lane separation, staging vs production boundaries, multi-tenant execution state | Depends on tenant design |
 
 The database is shared; scope keeps retrieval relevant. Start with the narrowest scope that preserves the behavior you want, then widen only when the memory should truly travel across projects or agents.
 
@@ -216,7 +266,7 @@ uv run deep-memory webui ~/.deep-memory/deep-memory.db --host 127.0.0.1 --port 8
 # open http://127.0.0.1:8765
 ```
 
-The WebUI can list, search, edit, and soft-delete records. It binds to `127.0.0.1` by default.
+The WebUI can list, search, edit, and soft-delete records. It binds to `127.0.0.1` by default, now serves `/favicon.svg` and `/favicon.ico`, and uses the same project icon in the browser tab.
 
 Export and audit:
 
@@ -244,7 +294,7 @@ for result in mem.search("how should this repo be tested?", limit=3):
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Local persistence | Implemented | Machine-local SQLite DB controlled by the user, with explicit scopes for users, workspaces, projects, and tenants. |
+| Local persistence | Implemented | Machine-local SQLite DB controlled by the user, with explicit scopes for users, workspaces, projects, workflows, and tenants. |
 | Search | Implemented | FTS5 plus local Chinese/English token fallback. |
 | Optional Chinese tokenizer | Implemented | `jieba` backend via `uv sync --extra retrieval`. |
 | Metadata | Implemented | `kind`, `importance`, `confidence`, `source`, timestamps, conflict states, scope, and decay. |
@@ -252,7 +302,7 @@ for result in mem.search("how should this repo be tested?", limit=3):
 | Python SDK + CLI | Implemented | `add`, `search`, `stats`, `conflicts`, `resolve-conflict`, `export`, `hard-delete`, `hermes-import`, `webui`. |
 | MCP server | Implemented | Stdio tools for `add`, `search`, `stats`, and conflict helpers. |
 | Hermes import | Implemented | Explicit session facts JSONL to `deep-memory` records. |
-| Local WebUI MVP | Implemented | Inspect, search, edit, and soft-delete memory records. |
+| Local WebUI MVP | Implemented | Inspect, search, edit, soft-delete, and favicon-backed browser identity for memory records. |
 | Memory to skill candidate | Implemented | Exports procedural memories as reviewable skill markdown; no auto-install. |
 | Codex wrapper MVP | Implemented | `deep-memory codex-run` injects bounded context and imports only explicit `--facts-out` JSONL after success. |
 | Native adapters for every agent | Spec / prototype | Use MCP or wrapper first. See `docs/ADAPTERS.md`. |
@@ -270,7 +320,8 @@ The core system is small on purpose:
 
 SQLite is boring on purpose. It is easy to install, inspect, test, back up, and replace later. A single machine-local store keeps agents interoperable; scopes keep retrieval bounded. Vector retrieval stays on the roadmap with schema placeholders and an opt-in migration path; see [`docs/VECTOR_ROADMAP.md`](docs/VECTOR_ROADMAP.md).
 
-Read more:
+<details>
+<summary>Read more architecture and policy docs</summary>
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/SAFETY_AND_PRIVACY.md`](docs/SAFETY_AND_PRIVACY.md)
@@ -279,6 +330,8 @@ Read more:
 - [`docs/ADAPTERS.md`](docs/ADAPTERS.md)
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - [`docs/VECTOR_ROADMAP.md`](docs/VECTOR_ROADMAP.md)
+
+</details>
 
 ## Safety boundary
 
@@ -308,8 +361,26 @@ Good starting paths:
 - `governance`: write policy, consent, export/delete, and conflict-lifecycle checks;
 - `docs`: quickstarts, troubleshooting, glossary, and contribution paths.
 
+### Concrete contribution paths
+
+- **Adding a new agent adapter.** Update the agent-facing command matrix in `docs/AGENT_QUICKSTART_MATRIX.md`, document the integration surface and trust boundary in `docs/ADAPTERS.md`, add the implementation or wrapper entrypoint under `src/deep_memory/`, and cover the path with at least one CLI or integration-oriented test under `tests/`.
+- **Adding a new eval fixture.** Add the fixture data under `evals/data/`, wire the new case into the relevant eval or benchmark runner under `evals/` or `benchmarks/`, document what it is measuring in `docs/CHINESE_RETRIEVAL_EVAL.md` or `docs/MEMORY_BENCHMARK.md`, and add a regression assertion in `tests/` if the behavior should stay stable in CI.
+
+<details>
+<summary>More contributing references</summary>
+
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), and [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md).
 
+</details>
+
 ## License
+
+deep-memory gives your agents a local memory layer you can inspect and govern.
+
+If this project is useful in your workflow, please consider starring the repo and opening issues or discussions with real deployment feedback.
+
+Contact and feedback:
+- GitHub Issues: <https://github.com/benbenlijie/deep-memory/issues>
+- GitHub Discussions: <https://github.com/benbenlijie/deep-memory/discussions>
 
 MIT

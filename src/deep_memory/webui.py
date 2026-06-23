@@ -11,6 +11,11 @@ from urllib.parse import parse_qs, urlparse
 from .core import DeepMemory, MemoryKind, MemoryRecord, TelemetryReport, _clamp01, _row_to_record, utcnow
 
 EDITABLE_KINDS: tuple[MemoryKind, ...] = ("working", "episodic", "semantic", "procedural")
+ASSET_DIR = Path(__file__).resolve().parents[2] / "docs" / "assets"
+FAVICON_FILES = {
+    "/favicon.svg": ("favicon.svg", "image/svg+xml"),
+    "/favicon.ico": ("favicon.ico", "image/x-icon"),
+}
 KIND_COLORS: dict[str, str] = {
     "working": "#1c7ed6",
     "episodic": "#f08c00",
@@ -276,6 +281,10 @@ def run_server(db: str | Path, *, host: str = "127.0.0.1", port: int = 8765) -> 
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
+            if parsed.path in FAVICON_FILES:
+                name, content_type = FAVICON_FILES[parsed.path]
+                self._send_file(ASSET_DIR / name, content_type)
+                return
             if parsed.path == "/graph.json":
                 self._send_json(build_graph_payload(db_path))
                 return
@@ -349,6 +358,17 @@ def run_server(db: str | Path, *, host: str = "127.0.0.1", port: int = 8765) -> 
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_file(self, path: Path, content_type: str) -> None:
+            if not path.exists():
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            body = path.read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -564,6 +584,8 @@ def _page(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{escape(title)}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root {{ color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }}
     body {{ margin: 2rem; line-height: 1.45; }}
