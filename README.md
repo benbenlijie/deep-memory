@@ -1,53 +1,72 @@
-# deep-memory
+<div align="center">
+  <img src="docs/assets/deep-memory-logo.svg" alt="deep-memory" width="500">
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+  <p><strong>Machine-local memory for all your agents. Inspect what they remember. Decide what they keep.</strong></p>
 
-> Machine-local memory for all your agents. Inspect what they remember. Decide what they keep.
+  <p>
+    A shared, inspectable memory layer for Claude Code, Codex, OpenCode, and Hermes.
+    Store explicit durable facts and procedures in a machine-local SQLite database, with scoped records for users, workspaces, projects, and agent workflows —
+    not hidden cloud state, not raw transcript scraping, not opaque global memory.
+  </p>
 
-A shared, inspectable memory layer for Claude Code, Codex, OpenCode, and Hermes. Store explicit durable facts and procedures in a machine-local SQLite database, with scoped records for users, workspaces, projects, and agent workflows — not hidden cloud state, not raw transcript scraping, not opaque global memory.
+  <p>
+    <a href="README.md">English</a> ·
+    <a href="README.zh-CN.md">简体中文</a>
+  </p>
 
-[![CI](https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-alpha-orange)
+  <p>
+    <a href="https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml"><img src="https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python">
+    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+    <img src="https://img.shields.io/badge/status-alpha-orange" alt="Status">
+  </p>
 
-Quick links: [Quickstart](#quickstart) · [Agent install guide](docs/AGENT_INSTALL_GUIDE.md) · [Safety & privacy](docs/SAFETY_AND_PRIVACY.md) · [Benchmarks & evals](docs/MEMORY_BENCHMARK.md) · [Contributing](#contributing)
+  <p>
+    <a href="#quickstart">Quickstart</a> ·
+    <a href="docs/AGENT_INSTALL_GUIDE.md">Agent install guide</a> ·
+    <a href="#talk-to-your-agent">Talk to your agent</a> ·
+    <a href="#connect-your-agent">Connect your agent</a> ·
+    <a href="#evidence-not-magic">Benchmarks & evals</a> ·
+    <a href="docs/SAFETY_AND_PRIVACY.md">Safety & privacy</a>
+  </p>
+</div>
 
-- **Cross-agent continuity.** One shared memory layer for multiple agent tools, so useful conventions do not have to be re-taught from scratch.
-- **Inspectable by default.** Read, edit, export, soft-delete, hard-delete, and audit records through the CLI, Python SDK, or local WebUI.
-- **Machine-local governance.** One local SQLite store can be shared across agents, while explicit scopes keep records bounded to users, workspaces, projects, or workflows.
-- **Regression-tested retrieval.** Checked-in evals cover Chinese retrieval, bilingual memory/no-memory tasks, and the core CLI/SDK behavior.
+<p align="center">
+  <img src="docs/assets/deep-memory-architecture.svg" alt="deep-memory architecture" width="920">
+</p>
 
-```text
-Claude Code / Codex / OpenCode / Hermes
-        │
-        │  explicit facts, procedures, project conventions
-        ▼
-DeepMemory SDK / CLI / MCP / wrappers
-        │
-        ▼
-machine-local SQLite + FTS5 + scoped records
-        │
-        ├─ ranked recall for future agent context
-        ├─ CLI / SDK / local WebUI inspection
-        ├─ export, soft-delete, hard-delete
-        └─ regression evals + reviewable skill candidates
-```
+## Choose the path that fits what you need
 
-Persistent agent memory is powerful precisely because it changes future behavior. `deep-memory` keeps the mechanism narrow: store durable facts and reusable procedures, keep them local and inspectable, retrieve only relevant context, and make deletion and policy boundaries explicit.
+| If you are... | Start here | What you get |
+| --- | --- | --- |
+| An agent operator who wants the fastest install | [Quickstart](#quickstart) | A machine-local database, one test memory, and a successful retrieval |
+| An AI agent installing this for a user | [Talk to your agent](#talk-to-your-agent) | A direct task prompt plus a verification checklist |
+| Connecting Claude Code, Hermes, Codex, or OpenCode | [Connect your agent](#connect-your-agent) | MCP or wrapper setup against one shared local DB |
+| Evaluating whether the claims are real | [Evidence, not magic](#evidence-not-magic) | Checked-in evals, benchmark baselines, and reproduction commands |
+| Checking the safety boundary before rollout | [Safety boundary](#safety-boundary) | Explicit write rules, scope boundaries, and destructive controls |
+| Inspecting how the system is built | [Architecture](#architecture) | Mechanism, storage model, retrieval path, and extension surface |
 
-## Why agent memory needs control
+## Why this exists
 
 Most agent memory fails in one of two ways: it forgets everything useful between sessions, or it remembers too much in a place the user cannot inspect. Both are bad substrates for serious work.
 
-A useful memory layer needs more than storage:
+`deep-memory` is built around a narrower mechanism:
 
-- **Inspectability:** humans should be able to see what an agent will carry forward.
-- **Deletion:** wrong, stale, private, or unsafe records must be removable, not merely hidden by ranking.
-- **Scoping:** machine-level memory should stay relevant through explicit user, workspace, project, and workflow scopes.
-- **Regression tests:** retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
+- **Cross-agent continuity.** One shared memory layer for Claude Code, Codex, OpenCode, and Hermes, so useful conventions do not have to be re-taught from scratch.
+- **Inspectable by default.** Read, edit, export, soft-delete, hard-delete, and audit records through the CLI, Python SDK, or local WebUI.
+- **Machine-local governance.** One local SQLite store can be shared across agents, while explicit scopes keep records bounded to users, workspaces, projects, or workflows.
+- **Chinese retrieval as a first-class path.** FTS5 plus local Chinese/English token fallback, optional `jieba`, and checked-in Chinese retrieval fixtures make the claim measurable instead of decorative.
+- **Memory to skill candidate export.** Procedural memory can be exported as reviewable skill candidates, so successful workflows become auditable artifacts instead of silently turning into behavior rules.
+- **Regression-tested retrieval.** Checked-in evals cover Chinese retrieval, bilingual memory/no-memory tasks, and the core CLI/SDK behavior.
 
-`deep-memory` is deliberately boring infrastructure: a local SQLite file, explicit metadata, reproducible commands, and human-visible records.
+Persistent agent memory is powerful precisely because it changes future behavior. `deep-memory` keeps the mechanism narrow: store durable facts and reusable procedures, keep them local and inspectable, retrieve only relevant context, and make deletion and policy boundaries explicit.
+
+That control surface matters because a useful memory layer needs more than storage:
+
+- **Inspectability.** Humans should be able to see what an agent will carry forward.
+- **Deletion.** Wrong, stale, private, or unsafe records must be removable, not merely hidden by ranking.
+- **Scoping.** Machine-level memory should stay relevant through explicit user, workspace, project, and workflow scopes.
+- **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
 
 ## Quickstart
 
@@ -77,6 +96,30 @@ uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memor
 This is the core loop: install one machine-local memory store, let agents share it, and keep records bounded with explicit scopes.
 
 If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, wrappers, safe memory-write rules, and how to ask the user before starring the repo.
+
+## Talk to your agent
+
+If you prefer a direct handoff, copy one of these prompts.
+
+### Fastest installation prompt
+
+> Install deep-memory for this machine, connect it to my agent tools through MCP or a wrapper, and verify that you can write and retrieve one durable memory. Tell me which scope layout you chose and why.
+
+### Shared-agent rollout prompt
+
+> Set up deep-memory as a shared machine-local memory layer for Claude Code, Codex, OpenCode, and Hermes. Use the same SQLite database for every tool, keep memory writes explicit, and show me the exact retrieval test you ran.
+
+### Safety-first evaluation prompt
+
+> Evaluate whether deep-memory fits my workflow. Check the safety boundary, scoping model, deletion path, and benchmark evidence before you install anything, then recommend a rollout plan.
+
+### Project-scope memory prompt
+
+> Connect deep-memory to this repo and keep retrieval bounded to project scope. Before work, search for this repository's conventions; after verified success, write back only durable project-specific facts or procedures and show me the exact records you added.
+
+### Procedural-memory-to-skill prompt
+
+> Use deep-memory to capture one successful workflow from this task as procedural memory, then export it as a reviewable skill candidate instead of auto-installing it. Show me the exported artifact and explain why it should stay review-first.
 
 ## Evidence, not magic
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" font-family="JetBrains Mono, Fira Code, SF Mono, Monaco, Consolas, Courier New, monospace">
+  <title>deep-memory favicon — Memory Chip</title>
+
+  <!-- background -->
+  <rect width="64" height="64" fill="#060a12"/>
+
+  <!-- hairline frame -->
+  <rect x="0.5" y="0.5" width="63" height="63" fill="none" stroke="#0ea5e9" stroke-opacity="0.3" stroke-width="1"/>
+
+  <!-- chip pins: four per side, extending outward five pixels -->
+  <g stroke="#22d3ee" stroke-width="2" stroke-linecap="square">
+    <!-- top pins -->
+    <line x1="19" y1="14" x2="19" y2="9"/>
+    <line x1="28" y1="14" x2="28" y2="9"/>
+    <line x1="37" y1="14" x2="37" y2="9"/>
+    <line x1="46" y1="14" x2="46" y2="9"/>
+    <!-- bottom pins -->
+    <line x1="19" y1="50" x2="19" y2="55"/>
+    <line x1="28" y1="50" x2="28" y2="55"/>
+    <line x1="37" y1="50" x2="37" y2="55"/>
+    <line x1="46" y1="50" x2="46" y2="55"/>
+    <!-- left pins -->
+    <line x1="14" y1="19" x2="9" y2="19"/>
+    <line x1="14" y1="28" x2="9" y2="28"/>
+    <line x1="14" y1="37" x2="9" y2="37"/>
+    <line x1="14" y1="46" x2="9" y2="46"/>
+    <!-- right pins -->
+    <line x1="50" y1="19" x2="55" y2="19"/>
+    <line x1="50" y1="28" x2="55" y2="28"/>
+    <line x1="50" y1="37" x2="55" y2="37"/>
+    <line x1="50" y1="46" x2="55" y2="46"/>
+  </g>
+
+  <!-- central die -->
+  <rect x="14" y="14" width="36" height="36" rx="4" fill="#0a1420" stroke="#22d3ee" stroke-width="1.5"/>
+
+  <!-- pin one indicator dot at top-left inside corner -->
+  <circle cx="18" cy="18" r="1.6" fill="#67e8f9"/>
+
+  <!-- die label: hex byte 6D for memory -->
+  <text x="32" y="32" text-anchor="middle" dominant-baseline="central" font-size="18" font-weight="700" fill="#22d3ee">6D</text>
+</svg>
