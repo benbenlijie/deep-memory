@@ -12,3 +12,4 @@ __pycache__/
 .playwright-mcp/
 .spec-workflow/
 .deep-memory/
+.tmp/
