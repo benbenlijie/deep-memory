@@ -1,0 +1,184 @@
+{
+  "recall": {
+    "summary": {
+      "query_count": 80,
+      "modes": {
+        "fts5": {
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.0
+        },
+        "vector": {
+          "recall@1": 0.2125,
+          "recall@3": 0.2125,
+          "recall@5": 0.4375,
+          "mrr": 0.2575
+        },
+        "hybrid": {
+          "recall@1": 0.4,
+          "recall@3": 0.4,
+          "recall@5": 0.4,
+          "mrr": 0.4
+        }
+      }
+    },
+    "categories": {
+      "exact_match": {
+        "query_count": 20,
+        "modes": {
+          "fts5": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          },
+          "vector": {
+            "recall@1": 0.25,
+            "recall@3": 0.25,
+            "recall@5": 0.5,
+            "mrr": 0.3
+          },
+          "hybrid": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          }
+        }
+      },
+      "synonym_match": {
+        "query_count": 20,
+        "modes": {
+          "fts5": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          },
+          "vector": {
+            "recall@1": 0.25,
+            "recall@3": 0.25,
+            "recall@5": 0.5,
+            "mrr": 0.3
+          },
+          "hybrid": {
+            "recall@1": 0.6,
+            "recall@3": 0.6,
+            "recall@5": 0.6,
+            "mrr": 0.6
+          }
+        }
+      },
+      "cross_lingual": {
+        "query_count": 20,
+        "modes": {
+          "fts5": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          },
+          "vector": {
+            "recall@1": 0.25,
+            "recall@3": 0.25,
+            "recall@5": 0.5,
+            "mrr": 0.3
+          },
+          "hybrid": {
+            "recall@1": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "mrr": 1.0
+          }
+        }
+      },
+      "semantic_paraphrase": {
+        "query_count": 20,
+        "modes": {
+          "fts5": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          },
+          "vector": {
+            "recall@1": 0.1,
+            "recall@3": 0.1,
+            "recall@5": 0.25,
+            "mrr": 0.13
+          },
+          "hybrid": {
+            "recall@1": 0.0,
+            "recall@3": 0.0,
+            "recall@5": 0.0,
+            "mrr": 0.0
+          }
+        }
+      }
+    }
+  },
+  "performance": {
+    "search_latency": {
+      "1000": {
+        "fts5": {
+          "p50_ms": 10.823,
+          "p95_ms": 12.768,
+          "p99_ms": 12.768,
+          "mean_ms": 11.43
+        },
+        "vector": {
+          "p50_ms": 30.854,
+          "p95_ms": 32.131,
+          "p99_ms": 32.131,
+          "mean_ms": 30.604
+        },
+        "hybrid": {
+          "p50_ms": 31.018,
+          "p95_ms": 32.623,
+          "p99_ms": 32.623,
+          "mean_ms": 31.386
+        }
+      },
+      "10000": {
+        "fts5": {
+          "p50_ms": 21.056,
+          "p95_ms": 22.817,
+          "p99_ms": 22.817,
+          "mean_ms": 20.613
+        },
+        "vector": {
+          "p50_ms": 218.505,
+          "p95_ms": 228.633,
+          "p99_ms": 228.633,
+          "mean_ms": 220.276
+        },
+        "hybrid": {
+          "p50_ms": 223.2,
+          "p95_ms": 235.447,
+          "p99_ms": 235.447,
+          "mean_ms": 223.219
+        }
+      }
+    },
+    "embedding_latency": {
+      "per_text_ms": 0.037,
+      "batch_64_ms": 0.401,
+      "batch_per_text_ms": 0.006
+    },
+    "memory_usage": {
+      "1000": {
+        "db_bytes": 843776,
+        "embedding_rows": 1000,
+        "embedding_blob_bytes": 48000,
+        "vector_overhead_bytes": 48000
+      },
+      "10000": {
+        "db_bytes": 7393280,
+        "embedding_rows": 10000,
+        "embedding_blob_bytes": 480000,
+        "vector_overhead_bytes": 480000
+      }
+    }
+  }
+}
