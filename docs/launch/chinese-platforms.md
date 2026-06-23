@@ -10,7 +10,6 @@
 
 GitHub：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
-Benchmark：https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 快速开始：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md#快速开始
 
 它想解决的问题很具体：AI Agent 经常在跨会话、跨工具时忘记有用上下文。
@@ -56,7 +55,6 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 | Chinese retrieval v1 | 默认 local backend 55/55；可选 `jieba` 55/55 | 中文 + 中英混合技术词检索 |
 | Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | 多 memory + distractor + stale facts |
 | Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | 验证 memory 是否能补足跨会话缺失事实 |
-| Competitive benchmark | deep-memory 本地可复现；其他系统明确列 blocker | 不伪造无法本地公平跑的分数 |
 
 我现在更想听真实使用场景里的反馈：
 
@@ -72,7 +70,6 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 
 GitHub：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
-Benchmark：https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 快速开始：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md#快速开始
 
 ---
@@ -91,7 +88,6 @@ Benchmark：https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIV
 
 项目地址：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
-Benchmark：https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 Quickstart：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md#快速开始
 
 ### 设计原则
@@ -171,18 +167,6 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 | Chinese retrieval v1 | 默认 local backend 55/55；可选 `jieba` 55/55 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl` |
 | Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json` |
 | Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | `uv run python benchmarks/memory_benchmark.py` |
-| Competitive benchmark | deep-memory 本地可复现；竞品需要外部配置的部分明确标 blocker | https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md |
-
-### 和 mem0 / Zep / LangMem 的关系
-
-我不想写“吊打谁”这种文案。更准确地说，它们的问题设定不完全一样：
-
-| 系统 | 可能优势 | deep-memory 当前关注点 |
-| --- | --- | --- |
-| mem0 | 更丰富的语义抽取、生产集成 | 本地可复现、可审计、轻量默认路径 |
-| Zep | 托管 temporal graph 和企业服务能力 | 不依赖云服务，用户能直接控制 DB |
-| LangMem | LangGraph 生态内的 memory manager | 跨 Agent、低耦合、CLI/MCP/SQLite |
-| ChatGPT Memory | 消费级体验方便 | 开发者可检查、可迁移、可 benchmark |
 
 ### 我最关心的反馈
 
@@ -200,5 +184,4 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 
 GitHub：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
-Benchmark：https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 快速开始：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md#快速开始

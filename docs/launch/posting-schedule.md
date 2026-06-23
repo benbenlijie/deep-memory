@@ -38,7 +38,6 @@ Day 2:
 ## Launch checklist
 
 - GitHub repo: https://github.com/benbenlijie/deep-memory
-- Benchmark doc: https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 - Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 - Chinese README: https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
 - 30s demo media: record quickstart + WebUI inspect/search flow before posting the Twitter/X thread.

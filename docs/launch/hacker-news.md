@@ -43,14 +43,12 @@ Demo path: clone the repo, run the quickstart above, then open the local WebUI w
 uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 8765
 ```
 
-Benchmark highlights, with the usual caveat that these are small regression checks rather than a claim that memory is solved:
+Evaluation highlights, with the usual caveat that these are small regression checks rather than a claim that memory is solved:
 
 - Chinese retrieval v1: 55/55 on the checked-in fixture with the default local backend; optional `jieba` also reaches 55/55.
 - Chinese retrieval v2: 20/20 top-1 on a harder multi-memory fixture with distractors.
 - Memory benchmark v0: 20 bilingual tasks; no-memory baseline 0/20; deep-memory typically 20/20 with the default retrieval limit.
-- Competitive benchmark: the local deep-memory path is reproducible without API keys; mem0/Zep/LangMem/ChatGPT Memory are listed with explicit blockers where a fair local run needs credentials or extra setup.
 
-Benchmark doc: https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 
 This is alpha software and should be treated as a controlled preview. I would especially appreciate feedback on the memory policy, adapter surface, Chinese retrieval fixtures, and whether the default local-first boundary feels right for developer agents.

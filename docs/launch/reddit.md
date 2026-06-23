@@ -35,17 +35,14 @@ uv run deep-memory add .deep-memory/deep-memory.db \
 uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?"
 ```
 
-Benchmark snapshot:
+Current checked-in evaluations:
 
-| System | Local-first default | Cross-agent | Trust/governance | Chinese retrieval | Reproducible here |
-| --- | --- | --- | --- | --- | --- |
-| deep-memory | Yes: SQLite | CLI/SDK/MCP/adapters | Source trust + lifecycle/conflicts | 20/20 top-1 on zh v2 fixture | Yes, no API key |
-| mem0 | Partial OSS, often external LLM/vector services | SDK/API | Not first-class in default API | Not run locally in this repo | Blocked: package/backend setup |
-| Zep | No, cloud-first | API/service | Service-managed | Not run locally in this repo | Blocked: cloud/API setup |
-| LangMem | Partial, LangGraph ecosystem dependent | Best inside LangGraph | Application-defined | Not run locally in this repo | Blocked: package/backend setup |
-| ChatGPT Memory | No | No public cross-agent API | Opaque product state | Not benchmarkable as library | Blocked: no benchmark API |
+| Evaluation | Current result | What it tests |
+| --- | --- | --- |
+| Chinese retrieval v1 | 55/55 local backend; 55/55 optional `jieba` | Chinese-first memory lookup with mixed technical terms |
+| Chinese retrieval v2 | 20/20 top-1, MRR 1.0 | Multi-memory cases with distractors and stale facts |
+| Memory benchmark v0 | no-memory 0/20; deep-memory usually 20/20 | Whether retrieval recovers missing cross-session facts |
 
-Detailed benchmark doc: https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 GitHub: https://github.com/benbenlijie/deep-memory
 
@@ -76,20 +73,8 @@ Current checked-in evaluations:
 | Chinese retrieval v1 | 55/55 local backend; 55/55 optional `jieba` | Chinese-first memory lookup with mixed technical terms |
 | Chinese retrieval v2 | 20/20 top-1, MRR 1.0 | Multi-memory cases with distractors and stale facts |
 | Memory benchmark v0 | no-memory 0/20; deep-memory usually 20/20 | Whether retrieval recovers missing cross-session facts |
-| Competitive benchmark | deep-memory measured locally; others listed with blockers | Avoids fabricating scores for systems needing cloud/API setup |
-
-Competitor comparison summary:
-
-| System | Local reproducibility | Likely strength | Current limitation in this benchmark |
-| --- | --- | --- | --- |
-| deep-memory | Runs locally with SQLite | Inspectability, Chinese local retrieval, simple setup | Small lexical benchmark; not production-scale semantic memory |
-| mem0 | Needs package/backend setup | Semantic extraction and integrations | Not fairly runnable here without extra config |
-| Zep | Cloud-first | Temporal graph and managed service ops | Requires service/API setup |
-| LangMem | Ecosystem-dependent | LangGraph-native memory managers | Heavier if not already on LangGraph |
-| ChatGPT Memory | Product feature | Consumer convenience | No reproducible developer benchmark API |
 
 Repo: https://github.com/benbenlijie/deep-memory
-Benchmark doc: https://github.com/benbenlijie/deep-memory/blob/main/docs/COMPETITIVE_BENCHMARK.md
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 
-The part I would most like critique on is the benchmark design. If you think of memory as a system with representations, retrieval, update rules, and governance, what are the right failure cases? Contradictions? Temporal validity? Privacy boundaries? Cross-agent contamination? Chinese/English mixed project facts? I am trying to keep the evals small and executable rather than impressive-looking.
+The part I would most like critique on is the eval design. If you think of memory as a system with representations, retrieval, update rules, and governance, what are the right failure cases? Contradictions? Temporal validity? Privacy boundaries? Cross-agent contamination? Chinese/English mixed project facts? I am trying to keep the evals small and executable rather than impressive-looking.
