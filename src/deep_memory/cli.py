@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from .adapters.agent_wrapper import run_codex_wrapper
@@ -207,23 +208,29 @@ def search(
     query: str,
     limit: int = typer.Option(5),
     kind: str | None = typer.Option(None),
+    retrieval_mode: str = typer.Option("auto", "--retrieval-mode", help="auto|fts5|vector|hybrid"),
     as_of: str | None = typer.Option(None, "--as-of", help="Only return records valid as of YYYY-MM-DD or ISO timestamp"),
     workspace: str | None = typer.Option(None, help="Workspace name; inferred from cwd when omitted"),
     include_global: bool = typer.Option(True, "--include-global/--no-include-global", help="Include explicitly global memories"),
     cross_workspace: bool = typer.Option(False, "--all-workspaces", help="Search across workspace/project scoped memories"),
     allow_fallback: bool = typer.Option(True, "--fallback/--no-fallback", help="Fill results from lower-trust memories when the high-trust bucket is short"),
+    embedding_version: int | None = typer.Option(None, "--embedding-version", help="Restrict vector/hybrid search to a specific embedding generation"),
 ) -> None:
     """Search memories."""
+    if retrieval_mode not in {"auto", "fts5", "vector", "hybrid"}:
+        raise typer.BadParameter("--retrieval-mode must be auto, fts5, vector, or hybrid")
     mem = DeepMemory(db)
     rows = mem.search(
         query,
         limit=limit,
         kind=kind,
+        retrieval_mode=retrieval_mode,  # type: ignore[arg-type]
         as_of=as_of,
         workspace=workspace,
         include_global=include_global,
         cross_workspace=cross_workspace,
         allow_fallback=allow_fallback,
+        embedding_version=embedding_version,
         caller="cli",
     )  # type: ignore[arg-type]
     table = Table("score", "kind", "content", "source")
@@ -233,6 +240,53 @@ def search(
             source = json.dumps(source, ensure_ascii=False) if source is not None else ""
         table.add_row(str(result.score), result.record.kind, result.record.content, source)
     console.print(table)
+
+
+@app.command("backfill-embeddings")
+def backfill_embeddings(
+    db: Path,
+    batch_size: int = typer.Option(100, "--batch-size", min=1, help="Number of memories to embed per batch"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview how many memories would be backfilled"),
+) -> None:
+    """Backfill missing or outdated memory embeddings in resumable batches."""
+    mem = DeepMemory(db)
+    try:
+        backend = mem._resolve_embedding_backend()
+        if backend is None:
+            raise typer.BadParameter(
+                "embedding backfill is unavailable; install deep-memory[vector] or configure an embedding backend"
+            )
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            preview = mem.backfill_embeddings(embedding_backend=backend, batch_size=batch_size, dry_run=True)
+            task_id = progress.add_task("backfilling embeddings", total=max(preview.scanned - preview.skipped, 0))
+            if dry_run:
+                progress.update(task_id, completed=max(preview.scanned - preview.skipped, 0))
+                result = preview
+            else:
+                result = mem.backfill_embeddings(
+                    embedding_backend=backend,
+                    batch_size=batch_size,
+                    dry_run=False,
+                    progress_callback=lambda advance: progress.advance(task_id, advance),
+                )
+    finally:
+        mem.close()
+    target_count = result.scanned - result.skipped
+    if dry_run:
+        console.print(
+            f"would backfill {target_count} embeddings (scanned={result.scanned}, skipped={result.skipped}, batch_size={batch_size})"
+        )
+    else:
+        console.print(
+            f"backfilled {result.backfilled} embeddings (scanned={result.scanned}, skipped={result.skipped}, batch_size={batch_size})"
+        )
 
 
 @scope_app.command("promote")

@@ -5,21 +5,27 @@ import math
 import os
 import re
 import shutil
+import sqlite3
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
-import sqlite3
 from pathlib import Path
+from typing import Any, Callable
 from typing import Literal, Mapping
 from uuid import uuid4
 
-from .embeddings import EmbeddingBackend, _pack_embedding, get_default_embedding_backend
+from .embeddings import EmbeddingBackend, _pack_embedding, _unpack_embedding, get_default_embedding_backend
 from .privacy import ensure_memory_content_allowed
 
 MemoryKind = Literal["working", "episodic", "semantic", "procedural"]
 ConflictStatus = Literal["active", "candidate", "resolved", "superseded", "deprecated", "archived"]
 RetrievalBackend = Literal["local", "jieba"]
+RetrievalMode = Literal["auto", "fts5", "vector", "hybrid"]
 MemoryScope = Literal["global", "user", "tenant", "workspace", "project"]
 DuplicatePolicy = Literal["create", "skip", "update"]
 
@@ -141,6 +147,22 @@ class SearchResult:
 
 
 @dataclass(frozen=True)
+class RetrievalCandidate:
+    record: MemoryRecord
+    lexical_score: float | None = None
+    vector_score: float | None = None
+
+
+@dataclass(frozen=True)
+class EmbeddingBackfillResult:
+    scanned: int
+    backfilled: int
+    skipped: int
+    dry_run: bool
+    batch_size: int
+
+
+@dataclass(frozen=True)
 class RetrievalLogEntry:
     id: int
     query: str | None
@@ -227,6 +249,7 @@ class DeepMemory:
         self.backup_retention_days = self._resolve_backup_retention_days(backup_retention_days)
         self._embedding_backend = embedding_backend
         self._embedding_backend_resolved = embedding_backend is not None
+        self._vector_search_cache: dict[tuple[object, ...], tuple[list[sqlite3.Row], Any | None, Any | None]] = {}
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self._init_schema()
@@ -665,6 +688,7 @@ class DeepMemory:
                 )
                 self._reverse_trust_conflicts(normalized_content, source_info, conflict_with_id=existing["id"], exclude_ids={existing["id"]})
                 self._store_embedding_if_available(existing["id"], normalized_content)
+                self._invalidate_vector_search_cache()
                 self.conn.commit()
                 return self.get(existing["id"])
         now = utcnow()
@@ -706,22 +730,55 @@ class DeepMemory:
         )
         self._reverse_trust_conflicts(normalized_content, source_info, conflict_with_id=record_id, exclude_ids={record_id})
         self._store_embedding_if_available(record_id, normalized_content)
+        self._invalidate_vector_search_cache()
         self.conn.commit()
         return self.get(record_id)
 
+    @staticmethod
+    def _read_embedding_enabled_from_pyproject() -> bool | None:
+        current = Path.cwd().resolve()
+        for candidate_dir in (current, *current.parents[:5]):
+            pyproject_path = candidate_dir / "pyproject.toml"
+            if not pyproject_path.is_file():
+                continue
+            try:
+                with pyproject_path.open("rb") as fh:
+                    config = tomllib.load(fh)
+            except OSError:
+                return None
+            value = (
+                config.get("tool", {})
+                .get("deep-memory", {})
+                .get("embedding", {})
+                .get("enabled")
+            )
+            return value if isinstance(value, bool) else None
+        return None
+
     def _resolve_embedding_backend(self) -> EmbeddingBackend | None:
         if not self._embedding_backend_resolved:
-            if os.environ.get("DEEP_MEMORY_EMBEDDING", "off").lower() not in {"1", "true", "yes", "on"}:
+            env_value = os.environ.get("DEEP_MEMORY_EMBEDDING")
+            if env_value is not None:
+                enabled = env_value.lower() in {"1", "true", "yes", "on"}
+            else:
+                enabled = self._read_embedding_enabled_from_pyproject() is True
+            if not enabled:
                 self._embedding_backend = None
             else:
                 self._embedding_backend = get_default_embedding_backend()
             self._embedding_backend_resolved = True
         return self._embedding_backend
 
+    def _invalidate_vector_search_cache(self) -> None:
+        self._vector_search_cache.clear()
+
     def _store_embedding_if_available(self, memory_id: str, content: str) -> None:
         backend = self._resolve_embedding_backend()
         if backend is None:
             return
+        self._store_embedding(memory_id, content, backend)
+
+    def _store_embedding(self, memory_id: str, content: str, backend: EmbeddingBackend) -> None:
         vector = backend.embed(content)
         now = utcnow()
         self.conn.execute(
@@ -746,36 +803,90 @@ class DeepMemory:
             (backend.model_name, backend.model_version, now, memory_id),
         )
 
+    def backfill_embeddings(
+        self,
+        *,
+        embedding_backend: EmbeddingBackend | None = None,
+        batch_size: int = 100,
+        dry_run: bool = False,
+        progress_callback: Callable[[int], None] | None = None,
+    ) -> EmbeddingBackfillResult:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        backend = embedding_backend or self._resolve_embedding_backend()
+        if backend is None:
+            raise RuntimeError("embedding backfill is unavailable; install deep-memory[vector] or configure an embedding backend")
+        rows = self.conn.execute(
+            "SELECT id, content, embedding_model, embedding_version FROM memories ORDER BY created_at ASC, id ASC"
+        ).fetchall()
+        scanned = len(rows)
+        skipped = 0
+        pending: list[tuple[str, str]] = []
+        for row in rows:
+            if row["embedding_model"] == backend.model_name and row["embedding_version"] == backend.model_version:
+                skipped += 1
+                continue
+            pending.append((str(row["id"]), str(row["content"])))
+        if dry_run:
+            return EmbeddingBackfillResult(scanned=scanned, backfilled=0, skipped=skipped, dry_run=True, batch_size=batch_size)
+        backfilled = 0
+        for start in range(0, len(pending), batch_size):
+            batch = pending[start : start + batch_size]
+            texts = [content for _, content in batch]
+            vectors = backend.embed_batch(texts)
+            now = utcnow()
+            for (memory_id, _), vector in zip(batch, vectors, strict=True):
+                self.conn.execute(
+                    """
+                    INSERT INTO memory_embeddings(memory_id, embedding, model_name, model_version, dim, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(memory_id) DO UPDATE SET
+                        embedding = excluded.embedding,
+                        model_name = excluded.model_name,
+                        model_version = excluded.model_version,
+                        dim = excluded.dim,
+                        created_at = excluded.created_at
+                    """,
+                    (memory_id, _pack_embedding(vector), backend.model_name, backend.model_version, len(vector), now),
+                )
+                self.conn.execute(
+                    """
+                    UPDATE memories
+                    SET embedding_model = ?, embedding_version = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (backend.model_name, backend.model_version, now, memory_id),
+                )
+            self.conn.commit()
+            backfilled += len(batch)
+            if progress_callback is not None:
+                progress_callback(len(batch))
+        return EmbeddingBackfillResult(scanned=scanned, backfilled=backfilled, skipped=skipped, dry_run=False, batch_size=batch_size)
+
     def get(self, record_id: str) -> MemoryRecord:
         row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (record_id,)).fetchone()
         if row is None:
             raise KeyError(record_id)
         return _row_to_record(row)
 
-    def search(
+    def _active_status_sql(self, alias: str) -> str:
+        return f"{alias}.conflict_status NOT IN ('candidate', 'deprecated', 'superseded', 'archived')"
+
+    def _fts_candidate_rows(
         self,
         query: str,
         *,
-        limit: int = 5,
-        kind: MemoryKind | None = None,
-        now: datetime | None = None,
-        as_of: str | datetime | None = None,
-        backend: RetrievalBackend = "local",
-        workspace: str | None = None,
-        tenant: str | None = None,
-        user_id: str | None = None,
-        agent: str | None = None,
-        include_global: bool = True,
-        cross_workspace: bool = False,
-        caller: str = "python",
-        high_trust_threshold: float = 0.7,
-        allow_fallback: bool = True,
-    ) -> list[SearchResult]:
-        query = query.strip()
-        if not query:
-            return []
-        if not cross_workspace and workspace is None:
-            workspace = _infer_workspace_from_cwd()
+        limit: int,
+        kind: MemoryKind | None,
+        as_of: str | datetime | None,
+        workspace: str | None,
+        tenant: str | None,
+        user_id: str | None,
+        agent: str | None,
+        include_global: bool,
+        cross_workspace: bool,
+        backend: RetrievalBackend,
+    ) -> list[sqlite3.Row]:
         query_tokens = _query_tokens(query, backend=backend)
         fts_query = " OR ".join(f'"{token}"' for token in query_tokens)
         params: list[object] = [fts_query]
@@ -795,55 +906,341 @@ class DeepMemory:
             cross_workspace=cross_workspace,
         )
         params.extend(scope_params)
-        candidate_limit = max(limit * 10, 50)
-        params.append(candidate_limit)
-        active_status_sql = "m.conflict_status NOT IN ('candidate', 'deprecated', 'superseded', 'archived')"
+        params.append(limit)
         rows = self.conn.execute(
             f"""
             SELECT m.*, bm25(memories_fts) AS lexical_score
             FROM memories_fts
             JOIN memories m ON m.rowid = memories_fts.rowid
-            WHERE memories_fts MATCH ? AND {active_status_sql} {kind_sql} {temporal_sql} {scope_sql}
+            WHERE memories_fts MATCH ? AND {self._active_status_sql('m')} {kind_sql} {temporal_sql} {scope_sql}
             ORDER BY lexical_score ASC
             LIMIT ?
             """,
             params,
         ).fetchall()
+        if rows:
+            return rows
+        like_terms = query_tokens[:8]
+        if not like_terms:
+            return []
+        like_where = " OR ".join("content LIKE ?" for _ in like_terms)
+        like_params: list[object] = [f"%{term}%" for term in like_terms]
+        if kind:
+            like_where = f"({like_where}) AND kind = ?"
+            like_params.append(kind)
+        like_temporal_sql, like_temporal_params = _temporal_filter_sql("", as_of)
+        like_params.extend(like_temporal_params)
+        like_scope_sql, like_scope_params = _scope_filter_sql(
+            "",
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
+            agent=agent,
+            include_global=include_global,
+            cross_workspace=cross_workspace,
+        )
+        like_where = (
+            f"({like_where}) AND conflict_status NOT IN ('candidate', 'deprecated', 'superseded', 'archived')"
+            f" {like_temporal_sql} {like_scope_sql}"
+        )
+        like_params.extend(like_scope_params)
+        like_params.append(limit)
+        return self.conn.execute(
+            f"SELECT *, -1.0 AS lexical_score FROM memories WHERE {like_where} LIMIT ?",
+            like_params,
+        ).fetchall()
+
+    def _fts_search(
+        self,
+        query: str,
+        *,
+        limit: int,
+        kind: MemoryKind | None,
+        as_of: str | datetime | None,
+        workspace: str | None,
+        tenant: str | None,
+        user_id: str | None,
+        agent: str | None,
+        include_global: bool,
+        cross_workspace: bool,
+        backend: RetrievalBackend,
+    ) -> list[RetrievalCandidate]:
+        rows = self._fts_candidate_rows(
+            query,
+            limit=limit,
+            kind=kind,
+            as_of=as_of,
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
+            agent=agent,
+            include_global=include_global,
+            cross_workspace=cross_workspace,
+            backend=backend,
+        )
+        return [
+            RetrievalCandidate(record=_row_to_record(row), lexical_score=float(row["lexical_score"]))
+            for row in rows
+        ]
+
+    def _vector_search(
+        self,
+        query: str,
+        *,
+        limit: int,
+        kind: MemoryKind | None,
+        as_of: str | datetime | None,
+        workspace: str | None,
+        tenant: str | None,
+        user_id: str | None,
+        agent: str | None,
+        include_global: bool,
+        cross_workspace: bool,
+        embedding_version: int | None,
+    ) -> list[RetrievalCandidate]:
+        backend = self._resolve_embedding_backend()
+        if backend is None:
+            raise RuntimeError("vector retrieval is unavailable; install deep-memory[vector] or configure an embedding backend")
+        query_vector = backend.embed(query)
+        temporal_sql, temporal_params = _temporal_filter_sql("m", as_of)
+        scope_sql, scope_params = _scope_filter_sql(
+            "m",
+            workspace=workspace,
+            tenant=tenant,
+            user_id=user_id,
+            agent=agent,
+            include_global=include_global,
+            cross_workspace=cross_workspace,
+        )
+        params: list[object] = []
+        kind_sql = ""
+        if kind:
+            kind_sql = "AND m.kind = ?"
+            params.append(kind)
+        version_sql = ""
+        if embedding_version is not None:
+            version_sql = "AND e.model_version = ?"
+            params.append(embedding_version)
+        params.extend(temporal_params)
+        params.extend(scope_params)
+        cache_key = (
+            kind,
+            embedding_version,
+            tuple(temporal_params),
+            tuple(scope_params),
+            as_of,
+            workspace,
+            tenant,
+            user_id,
+            agent,
+            include_global,
+            cross_workspace,
+        )
+        cached = self._vector_search_cache.get(cache_key)
+        if cached is None:
+            rows = self.conn.execute(
+                f"""
+                SELECT m.*, e.embedding
+                FROM memories m
+                JOIN memory_embeddings e ON e.memory_id = m.id
+                WHERE {self._active_status_sql('m')} {kind_sql} {version_sql} {temporal_sql} {scope_sql}
+                """,
+                params,
+            ).fetchall()
+            cached = self._build_vector_search_cache(rows)
+            self._vector_search_cache[cache_key] = cached
+        return self._rank_vector_cache(cached, query_vector, limit)
+
+    def _build_vector_search_cache(self, rows: list[sqlite3.Row]) -> tuple[list[sqlite3.Row], Any | None, Any | None]:
+        try:
+            import numpy as np  # type: ignore[import-not-found]
+        except ImportError:  # pragma: no cover - depends on optional local environment.
+            return (rows, None, None)
+
         if not rows:
-            like_terms = query_tokens[:8]
-            like_where = " OR ".join("content LIKE ?" for _ in like_terms)
-            like_params: list[object] = [f"%{term}%" for term in like_terms]
-            if kind:
-                like_where = f"({like_where}) AND kind = ?"
-                like_params.append(kind)
-            like_temporal_sql, like_temporal_params = _temporal_filter_sql("", as_of)
-            like_params.extend(like_temporal_params)
-            like_scope_sql, like_scope_params = _scope_filter_sql(
-                "",
+            return (rows, None, None)
+        try:
+            matrix = np.vstack(
+                [np.frombuffer(row["embedding"], dtype="<f4") for row in rows]
+            ).astype(np.float32, copy=False)
+        except ValueError:
+            return (rows, None, None)
+        norms = np.linalg.norm(matrix, axis=1)
+        return (rows, matrix, norms)
+
+    def _rank_vector_cache(
+        self,
+        cached: tuple[list[sqlite3.Row], Any | None, Any | None],
+        query_vector: list[float],
+        limit: int,
+    ) -> list[RetrievalCandidate]:
+        rows, matrix, norms = cached
+        if matrix is None or norms is None:
+            return self._rank_vector_rows_python(rows, query_vector, limit)
+        return self._rank_vector_matrix(rows, matrix, norms, query_vector, limit)
+
+    def _rank_vector_rows(
+        self,
+        rows: list[sqlite3.Row],
+        query_vector: list[float],
+        limit: int,
+    ) -> list[RetrievalCandidate]:
+        cached = self._build_vector_search_cache(rows)
+        return self._rank_vector_cache(cached, query_vector, limit)
+
+    @staticmethod
+    def _rank_vector_matrix(
+        rows: list[sqlite3.Row],
+        matrix: Any,
+        norms: Any,
+        query_vector: list[float],
+        limit: int,
+    ) -> list[RetrievalCandidate]:
+        import numpy as np  # type: ignore[import-not-found]
+
+        if not rows or limit <= 0:
+            return []
+        query_array = np.asarray(query_vector, dtype=np.float32)
+        query_norm = float(np.linalg.norm(query_array))
+        if query_norm == 0.0:
+            return []
+        if matrix.ndim != 2 or matrix.shape[1] != query_array.shape[0]:
+            return DeepMemory._rank_vector_rows_python(rows, query_vector, limit)
+
+        scores = np.zeros(matrix.shape[0], dtype=np.float32)
+        valid = norms > 0
+        scores[valid] = (matrix[valid] @ query_array) / (norms[valid] * query_norm)
+
+        top_k = min(limit, len(rows))
+        indexes = sorted(
+            range(len(rows)),
+            key=lambda idx: (float(scores[idx]), -idx),
+            reverse=True,
+        )[:top_k]
+        return [
+            RetrievalCandidate(record=_row_to_record(rows[index]), vector_score=float(scores[index]))
+            for index in indexes
+        ]
+
+    @staticmethod
+    def _rank_vector_rows_python(
+        rows: list[sqlite3.Row],
+        query_vector: list[float],
+        limit: int,
+    ) -> list[RetrievalCandidate]:
+        candidates: list[RetrievalCandidate] = []
+        for row in rows:
+            score = _cosine_similarity(query_vector, _unpack_embedding(row["embedding"]))
+            candidates.append(RetrievalCandidate(record=_row_to_record(row), vector_score=score))
+        candidates.sort(key=lambda candidate: candidate.vector_score or 0.0, reverse=True)
+        return candidates[:limit]
+
+    def search(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        kind: MemoryKind | None = None,
+        now: datetime | None = None,
+        as_of: str | datetime | None = None,
+        backend: RetrievalBackend = "local",
+        workspace: str | None = None,
+        tenant: str | None = None,
+        user_id: str | None = None,
+        agent: str | None = None,
+        include_global: bool = True,
+        cross_workspace: bool = False,
+        caller: str = "python",
+        high_trust_threshold: float = 0.7,
+        allow_fallback: bool = True,
+        retrieval_mode: RetrievalMode = "auto",
+        embedding_version: int | None = None,
+    ) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        if not cross_workspace and workspace is None:
+            workspace = _infer_workspace_from_cwd()
+        candidate_limit = max(limit * 10, 50)
+        vector_available = self._resolve_embedding_backend() is not None
+        if retrieval_mode == "auto":
+            effective_mode: RetrievalMode = "hybrid" if vector_available else "fts5"
+        else:
+            effective_mode = retrieval_mode
+        if effective_mode == "vector" and not vector_available:
+            raise RuntimeError("vector retrieval is unavailable; install deep-memory[vector] or configure an embedding backend")
+        if effective_mode == "hybrid" and not vector_available:
+            effective_mode = "fts5"
+
+        fts_candidates: list[RetrievalCandidate] = []
+        vector_candidates: list[RetrievalCandidate] = []
+        if effective_mode in {"fts5", "hybrid"}:
+            fts_candidates = self._fts_search(
+                query,
+                limit=candidate_limit,
+                kind=kind,
+                as_of=as_of,
                 workspace=workspace,
                 tenant=tenant,
                 user_id=user_id,
                 agent=agent,
                 include_global=include_global,
                 cross_workspace=cross_workspace,
+                backend=backend,
             )
-            like_where = f"({like_where}) AND conflict_status NOT IN ('candidate', 'deprecated', 'superseded', 'archived') {like_temporal_sql} {like_scope_sql}"
-            like_params.extend(like_scope_params)
-            like_params.append(candidate_limit)
-            rows = self.conn.execute(
-                f"SELECT *, -1.0 AS lexical_score FROM memories WHERE {like_where} LIMIT ?",
-                like_params,
-            ).fetchall()
-        results: list[SearchResult] = []
+        if effective_mode in {"vector", "hybrid"}:
+            vector_candidates = self._vector_search(
+                query,
+                limit=candidate_limit,
+                kind=kind,
+                as_of=as_of,
+                workspace=workspace,
+                tenant=tenant,
+                user_id=user_id,
+                agent=agent,
+                include_global=include_global,
+                cross_workspace=cross_workspace,
+                embedding_version=embedding_version,
+            )
+
+        candidate_map: dict[str, RetrievalCandidate] = {}
         seen_ids: set[str] = set()
+        for candidate in fts_candidates:
+            candidate_map[candidate.record.id] = candidate
+            seen_ids.add(candidate.record.id)
+        for candidate in vector_candidates:
+            existing = candidate_map.get(candidate.record.id)
+            if existing is None:
+                candidate_map[candidate.record.id] = candidate
+                seen_ids.add(candidate.record.id)
+            else:
+                candidate_map[candidate.record.id] = RetrievalCandidate(
+                    record=existing.record,
+                    lexical_score=existing.lexical_score,
+                    vector_score=candidate.vector_score,
+                )
+
+        results: list[SearchResult] = []
         ref = now or datetime.now(timezone.utc)
-        for row in rows:
-            record = _row_to_record(row)
-            seen_ids.add(record.id)
+        lexical_values = [candidate.lexical_score for candidate in candidate_map.values() if candidate.lexical_score is not None]
+        vector_values = [candidate.vector_score for candidate in candidate_map.values() if candidate.vector_score is not None]
+        hybrid_alpha = _hybrid_alpha()
+        for candidate in candidate_map.values():
+            record = candidate.record
             decay = forgetting_decay(record.created_at, record.importance, ref, kind=record.kind)
-            lexical = 1.0 / (1.0 + abs(float(row["lexical_score"])))
-            score = (lexical * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05) * record.baseline_trust * record.reputation
+            lexical = _normalize_lexical_score(candidate.lexical_score, lexical_values)
+            vector = _normalize_dense_score(candidate.vector_score, vector_values)
+            if effective_mode == "fts5":
+                retrieval_score = _absolute_lexical_score(candidate.lexical_score)
+            elif effective_mode == "vector":
+                retrieval_score = vector
+            else:
+                retrieval_score = hybrid_alpha * lexical + (1.0 - hybrid_alpha) * vector
+            score = (
+                retrieval_score * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05
+            ) * record.baseline_trust * record.reputation
             results.append(SearchResult(record=record, score=round(score, 4)))
+
         if len(results) < limit:
             supplement_sql = "AND kind = ?" if kind else ""
             supplement_params: list[object] = [kind] if kind else []
@@ -878,6 +1275,7 @@ class DeepMemory:
                 lexical = _token_overlap_score(query, record.content, backend=backend)
                 score = (lexical * 0.55 + record.importance * 0.25 + record.confidence * 0.15 + decay * 0.05) * record.baseline_trust * record.reputation
                 results.append(SearchResult(record=record, score=round(score, 4)))
+
         final_results = sorted(results, key=lambda r: r.score, reverse=True)
         high_trust_results = [
             result for result in final_results if result.record.baseline_trust * result.record.reputation >= high_trust_threshold
@@ -1860,6 +2258,55 @@ def _score_bucket(score: float) -> str:
     if score < 0.75:
         return "0.50-0.75"
     return "0.75-1.00"
+
+
+def _absolute_lexical_score(score: float | None) -> float:
+    if score is None:
+        return 0.0
+    return 1.0 / (1.0 + abs(float(score)))
+
+
+def _normalize_lexical_score(score: float | None, all_scores: list[float]) -> float:
+    if score is None:
+        return 0.0
+    lexical = _absolute_lexical_score(score)
+    normalized_scores = [_absolute_lexical_score(value) for value in all_scores]
+    return _minmax_normalize(lexical, normalized_scores)
+
+
+def _normalize_dense_score(score: float | None, all_scores: list[float]) -> float:
+    if score is None:
+        return 0.0
+    return _minmax_normalize(float(score), all_scores)
+
+
+def _minmax_normalize(value: float, population: list[float]) -> float:
+    if not population:
+        return _clamp01(value)
+    minimum = min(population)
+    maximum = max(population)
+    if math.isclose(minimum, maximum):
+        return 1.0 if value > 0 else 0.0
+    return _clamp01((value - minimum) / (maximum - minimum))
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 0.0
+    numerator = sum(a * b for a, b in zip(left, right))
+    left_norm = math.sqrt(sum(a * a for a in left))
+    right_norm = math.sqrt(sum(b * b for b in right))
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return numerator / (left_norm * right_norm)
+
+
+def _hybrid_alpha() -> float:
+    raw = os.environ.get("DEEP_MEMORY_HYBRID_ALPHA", "0.4")
+    try:
+        return _clamp01(float(raw))
+    except ValueError:
+        return 0.4
 
 
 def _jaccard(left: set[str], right: set[str]) -> float:

@@ -1,12 +1,15 @@
+import builtins
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from time import perf_counter
 
+import pytest
 from typer.testing import CliRunner
 
 from deep_memory import DeepMemory
 from deep_memory.cli import app
 from deep_memory.core import forgetting_decay, _jaccard_overlap
+from deep_memory.embeddings import DeterministicEmbeddingBackend
 
 
 def test_add_and_search_chinese_memory(tmp_path):
@@ -18,6 +21,149 @@ def test_add_and_search_chinese_memory(tmp_path):
     assert results
     assert "中文" in results[0].record.content
     assert results[0].record.kind == "semantic"
+
+
+class KeywordEmbeddingBackend(DeterministicEmbeddingBackend):
+    def __init__(self) -> None:
+        super().__init__(model_name="keyword-test", model_version=1, dim=6)
+        self._vectors = {
+            "pytest": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "test": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "deploy": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            "部署": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            "release": [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+            "发布": [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+        }
+
+    def embed(self, text: str) -> list[float]:
+        normalized = text.lower()
+        vector = [0.0] * 6
+        matched = False
+        for keyword, basis in self._vectors.items():
+            if keyword in normalized:
+                vector = [a + b for a, b in zip(vector, basis)]
+                matched = True
+        if not matched:
+            return super().embed(text)
+        norm = sum(value * value for value in vector) ** 0.5
+        return [value / norm for value in vector]
+
+
+runner = CliRunner()
+
+
+def test_search_hybrid_mode_finds_pytest_from_test_query(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db", embedding_backend=KeywordEmbeddingBackend())
+    target = mem.add("use pytest for regression coverage", kind="procedural", importance=0.9)
+    mem.add("document release checklist", kind="procedural", importance=0.6)
+
+    fts_results = mem.search("test", limit=1, retrieval_mode="fts5")
+    hybrid_results = mem.search("test", limit=1, retrieval_mode="hybrid")
+
+    assert fts_results
+    assert hybrid_results
+    assert [result.record.id for result in hybrid_results] == [target.id]
+
+
+def test_search_hybrid_mode_finds_cross_lingual_deploy_from_chinese_query(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db", embedding_backend=KeywordEmbeddingBackend())
+    target = mem.add("remember deploy runbook before release", kind="procedural", importance=0.1)
+    distractor = mem.add("store notes about retrospective", kind="episodic", importance=0.9)
+
+    fts_results = mem.search("部署", limit=1, retrieval_mode="fts5")
+    hybrid_results = mem.search("部署", limit=1, retrieval_mode="hybrid")
+
+    assert [result.record.id for result in fts_results] == [distractor.id]
+    assert [result.record.id for result in hybrid_results] == [target.id]
+
+
+def test_search_auto_mode_gracefully_degrades_to_fts_when_vector_backend_missing(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    mem.add("FTS only memory still searchable", kind="semantic")
+
+    auto_results = mem.search("FTS", limit=5, retrieval_mode="auto")
+    fts_results = mem.search("FTS", limit=5, retrieval_mode="fts5")
+
+    assert [result.record.id for result in auto_results] == [result.record.id for result in fts_results]
+
+
+def test_search_vector_mode_requires_vector_backend(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    mem.add("vector backend missing", kind="semantic")
+
+    with pytest.raises(RuntimeError, match="vector retrieval is unavailable"):
+        mem.search("vector", retrieval_mode="vector")
+
+
+def test_cli_search_accepts_retrieval_mode_option(tmp_path, monkeypatch):
+    db = tmp_path / "memory.db"
+    mem = DeepMemory(db, embedding_backend=KeywordEmbeddingBackend())
+    mem.add("use pytest for regression coverage", kind="procedural")
+    mem.close()
+    monkeypatch.setenv("DEEP_MEMORY_EMBEDDING", "on")
+    monkeypatch.setattr("deep_memory.core.get_default_embedding_backend", KeywordEmbeddingBackend)
+
+    result = runner.invoke(app, ["search", str(db), "test", "--retrieval-mode", "hybrid"])
+
+    assert result.exit_code == 0
+    assert "pytest" in result.output
+
+
+def test_vector_search_numpy_matches_python_fallback_ordering(tmp_path, monkeypatch):
+    mem = DeepMemory(tmp_path / "memory.db", embedding_backend=KeywordEmbeddingBackend())
+    target = mem.add("use pytest for regression coverage", kind="procedural", importance=0.9)
+    mem.add("document release checklist", kind="procedural", importance=0.6)
+    mem.add("remember deploy runbook before release", kind="procedural", importance=0.1)
+
+    rows = mem.conn.execute(
+        """
+        SELECT m.*, e.embedding
+        FROM memories m
+        JOIN memory_embeddings e ON e.memory_id = m.id
+        WHERE m.conflict_status = 'active'
+        ORDER BY m.created_at ASC, m.id ASC
+        """
+    ).fetchall()
+    query_vector = KeywordEmbeddingBackend().embed("test")
+
+    numpy_ranked = mem._rank_vector_rows(rows, query_vector, limit=3)
+    python_ranked = mem._rank_vector_rows_python(rows, query_vector, limit=3)
+
+    assert [candidate.record.id for candidate in numpy_ranked] == [candidate.record.id for candidate in python_ranked]
+    assert numpy_ranked[0].record.id == target.id
+    assert pytest.approx(numpy_ranked[0].vector_score, rel=1e-6) == python_ranked[0].vector_score
+
+
+def test_vector_search_gracefully_falls_back_without_numpy(tmp_path, monkeypatch):
+    mem = DeepMemory(tmp_path / "memory.db", embedding_backend=KeywordEmbeddingBackend())
+    mem.add("use pytest for regression coverage", kind="procedural", importance=0.9)
+    mem.add("document release checklist", kind="procedural", importance=0.6)
+
+    rows = mem.conn.execute(
+        """
+        SELECT m.*, e.embedding
+        FROM memories m
+        JOIN memory_embeddings e ON e.memory_id = m.id
+        WHERE m.conflict_status = 'active'
+        ORDER BY m.created_at ASC, m.id ASC
+        """
+    ).fetchall()
+    query_vector = KeywordEmbeddingBackend().embed("test")
+
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "numpy":
+            raise ImportError("numpy intentionally unavailable for fallback test")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    ranked = mem._rank_vector_rows(rows, query_vector, limit=2)
+    python_ranked = mem._rank_vector_rows_python(rows, query_vector, limit=2)
+
+    assert [candidate.record.id for candidate in ranked] == [candidate.record.id for candidate in python_ranked]
+    assert [candidate.vector_score for candidate in ranked] == [candidate.vector_score for candidate in python_ranked]
 
 
 def test_stats_counts_layers(tmp_path):
