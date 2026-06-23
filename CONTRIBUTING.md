@@ -30,6 +30,8 @@ Or run the automated setup check:
 
 The setup script installs all contributor extras, installs pre-commit hooks when `pre-commit` is available, then verifies pytest and ruff.
 
+If setup fails before you can reach the actual contribution, use [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md). It covers `uv sync --extra dev`, optional `--extra mcp`, pytest/ruff failures, and missing runtime CLIs.
+
 ## Project structure
 
 ```text
@@ -40,7 +42,7 @@ src/deep_memory/webui.py  Local inspector UI for searching, editing, and graph/t
 src/deep_memory/adapters/ Agent/runtime integration surfaces.
 tests/                    Unit and regression tests.
 evals/                    Retrieval eval runners and checked-in fixture data.
-benchmarks/               Memory benchmark and competitive benchmark code/data.
+benchmarks/               Internal eval/regression benchmark code/data.
 docs/                     User docs, architecture docs, roadmap, governance, community paths.
 scripts/                  Maintainer/contributor helper scripts.
 .github/                  CI, issue templates, and label proposal.
@@ -120,6 +122,22 @@ Read `docs/ADAPTERS.md` and `docs/COMMUNITY.md` before implementing. An adapter 
 ## Community feedback
 
 If you are not ready to write code yet, the highest-leverage contribution is a concrete agent memory failure case: what the agent should have remembered, what it recalled instead, and which runtime you were using. Use the `Memory failure case` issue template and redact any private data.
+
+## Good first issues
+
+If you want a small first contribution, start with `docs/GOOD_FIRST_ISSUE_DRAFTS.md`. That draft list is written to be opened with minimal editing and keeps the issue shapes narrow, testable, and aligned with the current controlled-preview positioning.
+
+Priority newcomer paths from the current draft batch:
+
+- privacy-boundary eval fixtures;
+- workspace scope-isolation regression case;
+- WebUI empty-state polish;
+- Hermes adapter smoke transcript example;
+- docs troubleshooting for local setup failures;
+- export/delete example flow;
+- mixed Chinese/English retrieval fixtures.
+
+When opening one of these, keep the issue small enough that a maintainer can review it from a single lane with explicit verification commands.
 
 ## Contribution lanes
 

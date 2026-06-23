@@ -62,7 +62,7 @@ verification, and safe contribution lanes.
   boundaries.
 - Shared memory adapters for Hermes, Claude Code, Codex, OpenCode/OpenClaw-style
   tools.
-- Public benchmark and leaderboard, starting with checked-in fixtures before
+- Public internal eval/regression lanes, starting with checked-in fixtures before
   broader claims.
 - Community backlog with `good first issue`, `help wanted`, `adapter`, `eval`,
   `governance`, and `docs` lanes.

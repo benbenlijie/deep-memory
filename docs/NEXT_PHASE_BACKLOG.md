@@ -23,6 +23,8 @@ For docs-only changes, also run the Markdown link check from [`AGENT_QUICKSTART_
 
 ## Good-first-issue lane
 
+The first maintainer-ready batch now lives in [`GOOD_FIRST_ISSUE_DRAFTS.md`](GOOD_FIRST_ISSUE_DRAFTS.md). Use the items below as the backlog map and use the draft file when opening the actual GitHub issues.
+
 ### 1. Add mixed Chinese/English query fixtures
 
 Why it matters: Chinese-first retrieval should be proven with realistic developer phrasing, not only clean examples.

@@ -88,13 +88,13 @@ Design constraints:
 
 Use a reversible shadow-index rollout:
 
-1. Add an `embedding_v2` storage path or index side table while keeping existing FTS5 reads unchanged.
-2. Run background backfill in batches, stamping `embedding_model` and `embedding_version` for each completed record.
-3. Add a feature flag for hybrid retrieval, default off.
-4. Run dual-read validation: FTS-only and hybrid both execute, eval logs compare top-k, latency, and disagreement cases.
-5. Cut over only when evals pass and privacy copy is reviewed.
-6. Keep the old index for 2 weeks after cutover.
-7. Remove or compact old embedding storage only after rollback risk is low.
+1. Keep the current `memory_embeddings` row as v1 and introduce a parallel `memory_embeddings_v2` side table (or `embedding_v2` shadow column set if SQLite layout constraints require it) instead of mutating v1 in place.
+2. Stamp every generated vector row with `model_name`, `model_version`, and `dim`; mirror the active generation on `memories.embedding_model` + `memories.embedding_version` for quick audit/state inspection.
+3. Run `deep-memory backfill-embeddings <db> --batch-size 100` in the background against the target generation. The command is resumable because it re-scans all memories and skips rows whose `embedding_model` + `embedding_version` already match the requested backend. Use `--dry-run` first to estimate pending work.
+4. Add a feature flag such as `DEEP_MEMORY_EMBEDDING_VERSION=v2` so query-time vector reads can be pinned to one generation; the runtime should support explicit filtering (`--embedding-version 2`) during migration.
+5. Run dual-read validation: query both v1 and v2, compare top-k overlap/disagreement, and gate cutover on overlap > 60% plus acceptable latency/regression metrics.
+6. Cut over reads to v2 only after validation passes; keep v1 warm for 2 weeks so rollback is a flag flip rather than a re-embed.
+7. Remove or compact v1 storage only after the warm period ends and rollback risk is low.
 
 Operational requirements:
 

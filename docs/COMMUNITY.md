@@ -47,6 +47,8 @@ Keep this document focused on community architecture and contribution paths;
 keep the backlog document focused on concrete tasks, acceptance criteria, and
 verification commands.
 
+For the first external-contributor batch, use [`GOOD_FIRST_ISSUE_DRAFTS.md`](GOOD_FIRST_ISSUE_DRAFTS.md) as the ready-to-open shortlist. Those drafts are intentionally narrow, newcomer-friendly, and aligned with the current controlled-preview positioning rather than a broad launch posture.
+
 ## Issue templates proposal
 
 The repo already has a `Memory failure case` issue template. The next useful templates are:
