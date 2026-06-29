@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+    "numpy_available": true,
+    "sentence_transformers_available": false
+  },
+  "config": {
+    "sizes": [
+      1000,
+      10000,
+      50000
+    ],
+    "dimensions": 512,
+    "latency_iterations": 10
+  },
+  "sizes": {
+    "1000": {
+      "seed": {
+        "seconds": 0.078,
+        "rows_per_second": 12830.594
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 45.177,
+          "warm": {
+            "p50_ms": 38.93,
+            "p95_ms": 53.794,
+            "p99_ms": 53.794,
+            "mean_ms": 41.418
+          }
+        },
+        "vector": {
+          "cold_ms": 143.919,
+          "warm": {
+            "p50_ms": 36.782,
+            "p95_ms": 53.865,
+            "p99_ms": 53.865,
+            "mean_ms": 35.245
+          }
+        },
+        "hybrid": {
+          "cold_ms": 24.465,
+          "warm": {
+            "p50_ms": 24.394,
+            "p95_ms": 75.923,
+            "p99_ms": 75.923,
+            "mean_ms": 31.109
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330",
+            "mem-000331",
+            "mem-000332",
+            "mem-000333",
+            "mem-000334",
+            "mem-000335"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-a",
+            "workspace-b",
+            "mem-000329",
+            "mem-000330"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 0.062,
+        "rows_per_second": 16001.377,
+        "scanned": 1000,
+        "backfilled": 1000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 4751360,
+        "embedding_rows": 1000,
+        "embedding_blob_bytes": 2048000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    },
+    "10000": {
+      "seed": {
+        "seconds": 0.573,
+        "rows_per_second": 17452.73
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 54.869,
+          "warm": {
+            "p50_ms": 54.425,
+            "p95_ms": 58.536,
+            "p99_ms": 58.536,
+            "mean_ms": 55.014
+          }
+        },
+        "vector": {
+          "cold_ms": 299.066,
+          "warm": {
+            "p50_ms": 28.813,
+            "p95_ms": 37.147,
+            "p99_ms": 37.147,
+            "mean_ms": 29.916
+          }
+        },
+        "hybrid": {
+          "cold_ms": 31.204,
+          "warm": {
+            "p50_ms": 38.599,
+            "p95_ms": 46.193,
+            "p99_ms": 46.193,
+            "mean_ms": 37.839
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335",
+            "mem-003334",
+            "mem-003333",
+            "mem-003332",
+            "mem-003331",
+            "mem-003330"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-b",
+            "workspace-a",
+            "mem-003337",
+            "mem-003336"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 0.633,
+        "rows_per_second": 15792.896,
+        "scanned": 10000,
+        "backfilled": 10000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 46284800,
+        "embedding_rows": 10000,
+        "embedding_blob_bytes": 20480000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    },
+    "50000": {
+      "seed": {
+        "seconds": 2.965,
+        "rows_per_second": 16866.01
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 131.709,
+          "warm": {
+            "p50_ms": 125.811,
+            "p95_ms": 133.989,
+            "p99_ms": 133.989,
+            "mean_ms": 126.457
+          }
+        },
+        "vector": {
+          "cold_ms": 1580.33,
+          "warm": {
+            "p50_ms": 51.748,
+            "p95_ms": 103.397,
+            "p99_ms": 103.397,
+            "mean_ms": 59.835
+          }
+        },
+        "hybrid": {
+          "cold_ms": 49.101,
+          "warm": {
+            "p50_ms": 48.98,
+            "p95_ms": 87.618,
+            "p99_ms": 87.618,
+            "mean_ms": 54.5
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670",
+            "mem-016669",
+            "mem-016668",
+            "mem-016667",
+            "mem-016666",
+            "mem-016665"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-b",
+            "workspace-a",
+            "mem-016672",
+            "mem-016670"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 3.246,
+        "rows_per_second": 15404.873,
+        "scanned": 50000,
+        "backfilled": 50000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 231116800,
+        "embedding_rows": 50000,
+        "embedding_blob_bytes": 102400000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    }
+  }
+}
