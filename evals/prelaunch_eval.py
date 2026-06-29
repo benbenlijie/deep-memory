@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import builtins
+import hashlib
 import importlib.util
 import json
 import platform
@@ -55,7 +57,9 @@ class PrelaunchEmbeddingBackend:
                 vector[index] = 1.0
                 matched = True
         if not matched:
-            index = (hash(normalized) % max(1, self.dimensions - 8)) + min(8, self.dimensions - 1)
+            digest = hashlib.sha256(normalized.encode("utf-8")).digest()
+            stable_hash = int.from_bytes(digest[:8], "big")
+            index = (stable_hash % max(1, self.dimensions - 8)) + min(8, self.dimensions - 1)
             vector[index % self.dimensions] = 1.0
         return vector
 
@@ -261,8 +265,21 @@ def _evaluate_reproducibility(mem: DeepMemory) -> dict[str, Any]:
 
 
 def _evaluate_fallback(mem: DeepMemory) -> dict[str, Any]:
-    cached = mem._build_vector_search_cache([])
-    results = mem.search("target testing playbook", limit=5, retrieval_mode="auto", cross_workspace=True)
+    original_import = builtins.__import__
+
+    def guarded_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == "numpy":
+            raise ImportError("simulated missing numpy")
+        return original_import(name, *args, **kwargs)
+
+    mem._invalidate_vector_search_cache()
+    builtins.__import__ = guarded_import
+    try:
+        cached = mem._build_vector_search_cache([])
+        results = mem.search("target testing playbook", limit=5, retrieval_mode="auto", cross_workspace=True)
+    finally:
+        builtins.__import__ = original_import
+        mem._invalidate_vector_search_cache()
     return {
         "no_numpy_functional": {"passed": bool(results), "top_ids": _ids(results)},
         "empty_cache_shape": [len(cached[0]), cached[1], cached[2]],

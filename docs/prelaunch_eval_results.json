@@ -18,35 +18,35 @@
   "sizes": {
     "1000": {
       "seed": {
-        "seconds": 0.078,
-        "rows_per_second": 12830.594
+        "seconds": 0.063,
+        "rows_per_second": 15784.061
       },
       "latency": {
         "fts5": {
-          "cold_ms": 45.177,
+          "cold_ms": 39.927,
           "warm": {
-            "p50_ms": 38.93,
-            "p95_ms": 53.794,
-            "p99_ms": 53.794,
-            "mean_ms": 41.418
+            "p50_ms": 39.034,
+            "p95_ms": 53.772,
+            "p99_ms": 53.772,
+            "mean_ms": 40.748
           }
         },
         "vector": {
-          "cold_ms": 143.919,
+          "cold_ms": 124.675,
           "warm": {
-            "p50_ms": 36.782,
-            "p95_ms": 53.865,
-            "p99_ms": 53.865,
-            "mean_ms": 35.245
+            "p50_ms": 26.706,
+            "p95_ms": 46.553,
+            "p99_ms": 46.553,
+            "mean_ms": 29.8
           }
         },
         "hybrid": {
-          "cold_ms": 24.465,
+          "cold_ms": 33.902,
           "warm": {
-            "p50_ms": 24.394,
-            "p95_ms": 75.923,
-            "p99_ms": 75.923,
-            "mean_ms": 31.109
+            "p50_ms": 31.414,
+            "p95_ms": 39.187,
+            "p99_ms": 39.187,
+            "mean_ms": 32.387
           }
         }
       },
@@ -107,8 +107,8 @@
         }
       },
       "backfill": {
-        "seconds": 0.062,
-        "rows_per_second": 16001.377,
+        "seconds": 0.064,
+        "rows_per_second": 15532.926,
         "scanned": 1000,
         "backfilled": 1000,
         "skipped": 0
@@ -143,9 +143,9 @@
           "top_ids": [
             "mixed-language",
             "known-target",
-            "mem-000327",
-            "mem-000329",
-            "mem-000330"
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
           ]
         },
         "empty_cache_shape": [
@@ -157,35 +157,35 @@
     },
     "10000": {
       "seed": {
-        "seconds": 0.573,
-        "rows_per_second": 17452.73
+        "seconds": 0.568,
+        "rows_per_second": 17602.021
       },
       "latency": {
         "fts5": {
-          "cold_ms": 54.869,
+          "cold_ms": 59.571,
           "warm": {
-            "p50_ms": 54.425,
-            "p95_ms": 58.536,
-            "p99_ms": 58.536,
-            "mean_ms": 55.014
+            "p50_ms": 55.839,
+            "p95_ms": 56.389,
+            "p99_ms": 56.389,
+            "mean_ms": 55.832
           }
         },
         "vector": {
-          "cold_ms": 299.066,
+          "cold_ms": 306.056,
           "warm": {
-            "p50_ms": 28.813,
-            "p95_ms": 37.147,
-            "p99_ms": 37.147,
-            "mean_ms": 29.916
+            "p50_ms": 28.993,
+            "p95_ms": 32.185,
+            "p99_ms": 32.185,
+            "mean_ms": 29.452
           }
         },
         "hybrid": {
-          "cold_ms": 31.204,
+          "cold_ms": 30.272,
           "warm": {
-            "p50_ms": 38.599,
-            "p95_ms": 46.193,
-            "p99_ms": 46.193,
-            "mean_ms": 37.839
+            "p50_ms": 29.973,
+            "p95_ms": 36.62,
+            "p99_ms": 36.62,
+            "mean_ms": 31.201
           }
         }
       },
@@ -246,8 +246,8 @@
         }
       },
       "backfill": {
-        "seconds": 0.633,
-        "rows_per_second": 15792.896,
+        "seconds": 0.617,
+        "rows_per_second": 16194.728,
         "scanned": 10000,
         "backfilled": 10000,
         "skipped": 0
@@ -282,9 +282,9 @@
           "top_ids": [
             "mixed-language",
             "known-target",
-            "mem-003338",
-            "mem-003336",
-            "mem-003335"
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
           ]
         },
         "empty_cache_shape": [
@@ -296,35 +296,35 @@
     },
     "50000": {
       "seed": {
-        "seconds": 2.965,
-        "rows_per_second": 16866.01
+        "seconds": 2.946,
+        "rows_per_second": 16970.452
       },
       "latency": {
         "fts5": {
-          "cold_ms": 131.709,
+          "cold_ms": 126.355,
           "warm": {
-            "p50_ms": 125.811,
-            "p95_ms": 133.989,
-            "p99_ms": 133.989,
-            "mean_ms": 126.457
+            "p50_ms": 124.744,
+            "p95_ms": 125.3,
+            "p99_ms": 125.3,
+            "mean_ms": 124.803
           }
         },
         "vector": {
-          "cold_ms": 1580.33,
+          "cold_ms": 1561.805,
           "warm": {
-            "p50_ms": 51.748,
-            "p95_ms": 103.397,
-            "p99_ms": 103.397,
-            "mean_ms": 59.835
+            "p50_ms": 52.822,
+            "p95_ms": 68.618,
+            "p99_ms": 68.618,
+            "mean_ms": 54.873
           }
         },
         "hybrid": {
-          "cold_ms": 49.101,
+          "cold_ms": 51.156,
           "warm": {
-            "p50_ms": 48.98,
-            "p95_ms": 87.618,
-            "p99_ms": 87.618,
-            "mean_ms": 54.5
+            "p50_ms": 55.933,
+            "p95_ms": 96.92,
+            "p99_ms": 96.92,
+            "mean_ms": 60.522
           }
         }
       },
@@ -385,8 +385,8 @@
         }
       },
       "backfill": {
-        "seconds": 3.246,
-        "rows_per_second": 15404.873,
+        "seconds": 3.305,
+        "rows_per_second": 15129.237,
         "scanned": 50000,
         "backfilled": 50000,
         "skipped": 0
@@ -421,9 +421,9 @@
           "top_ids": [
             "mixed-language",
             "known-target",
-            "mem-016672",
-            "mem-016671",
-            "mem-016670"
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
           ]
         },
         "empty_cache_shape": [
