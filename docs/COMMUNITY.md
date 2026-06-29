@@ -40,6 +40,8 @@ Use [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md) as the public backlog. Each
 item there has acceptance criteria and suggested commands so a contributor can
 know when the work is credible.
 
+New contributors should start from the live [`good first issue` list](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue), claim one issue in a comment, run its suggested commands, and keep the PR scoped to that lane.
+
 ## Suggested backlog
 
 The issue-sized backlog now lives in [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md).
@@ -47,7 +49,17 @@ Keep this document focused on community architecture and contribution paths;
 keep the backlog document focused on concrete tasks, acceptance criteria, and
 verification commands.
 
-For the first external-contributor batch, use [`GOOD_FIRST_ISSUE_DRAFTS.md`](GOOD_FIRST_ISSUE_DRAFTS.md) as the ready-to-open shortlist. Those drafts are intentionally narrow, newcomer-friendly, and aligned with the current controlled-preview positioning rather than a broad launch posture.
+The first external-contributor batch is now published:
+
+- [#6](https://github.com/benbenlijie/deep-memory/issues/6) — privacy-boundary eval fixtures;
+- [#7](https://github.com/benbenlijie/deep-memory/issues/7) — workspace scope-isolation regression;
+- [#8](https://github.com/benbenlijie/deep-memory/issues/8) — WebUI empty-state polish;
+- [#9](https://github.com/benbenlijie/deep-memory/issues/9) — Hermes adapter smoke transcript example;
+- [#10](https://github.com/benbenlijie/deep-memory/issues/10) — first-time local setup troubleshooting;
+- [#11](https://github.com/benbenlijie/deep-memory/issues/11) — export/import backup and restore example;
+- [#12](https://github.com/benbenlijie/deep-memory/issues/12) — mixed Chinese/English retrieval fixtures.
+
+[`GOOD_FIRST_ISSUE_DRAFTS.md`](GOOD_FIRST_ISSUE_DRAFTS.md) remains the source draft list and issue-number map for this batch.
 
 ## Issue templates proposal
 

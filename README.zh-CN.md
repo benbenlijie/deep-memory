@@ -267,7 +267,9 @@ uv run deep-memory webui ~/.deep-memory/deep-memory.db --host 127.0.0.1 --port 8
 # 打开 http://127.0.0.1:8765
 ```
 
-WebUI 可以查看、搜索、编辑、软删除记录，默认只绑定 `127.0.0.1`，现在也会提供 `/favicon.svg` 与 `/favicon.ico`，让浏览器标签页和书签显示项目图标。
+`deep-memory webui ...` 是当前支持的启动方式。`deep-memory-webui` 不是当前 console script，也不是推荐的启动契约。
+
+WebUI 可以查看、搜索、编辑、软删除记录，默认只绑定 `127.0.0.1`，现在也会提供 `/favicon.svg` 与 `/favicon.ico`，让浏览器标签页和书签显示项目图标。如果你的机器上 `8765` 已被占用，换一个空闲 `--port` 即可，例如 `--port 8876`。
 
 导出与审计：
 
@@ -353,6 +355,8 @@ for result in mem.search("这个仓库怎么跑测试？", limit=3):
 ## 贡献
 
 当前这仍然是 controlled preview，而不是 broad launch。好的贡献应该让这层记忆更可检查、更可复现、更有边界、也更容易实际跑起来。
+
+新来的？从 [good first issue](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue) 开始，先留言认领一张小任务，跑通它列出的验证命令，再提交一个带证据的小 PR。
 
 适合开始的方向：
 
