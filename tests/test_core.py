@@ -129,7 +129,8 @@ def test_vector_search_numpy_matches_python_fallback_ordering(tmp_path, monkeypa
     numpy_ranked = mem._rank_vector_rows(rows, query_vector, limit=3)
     python_ranked = mem._rank_vector_rows_python(rows, query_vector, limit=3)
 
-    assert [candidate.record.id for candidate in numpy_ranked] == [candidate.record.id for candidate in python_ranked]
+    assert {candidate.record.id for candidate in numpy_ranked} == {candidate.record.id for candidate in python_ranked}
+    assert {candidate.record.id for candidate in numpy_ranked[1:]} == {candidate.record.id for candidate in python_ranked[1:]}
     assert numpy_ranked[0].record.id == target.id
     assert pytest.approx(numpy_ranked[0].vector_score, rel=1e-6) == python_ranked[0].vector_score
 

@@ -3,7 +3,7 @@ name = "deep-memory"
 version = "0.1.0"
 description = "Open-source persistent memory layer for AI agents: Chinese-first, cross-session, forgetting-aware, conflict-aware."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "deep-memory contributors" }]
 keywords = ["ai-agent", "memory", "agent-memory", "llm", "sqlite", "mcp", "chinese"]
@@ -27,6 +27,9 @@ vector = [
   "torch>=2.1.0",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8.0.0", "ruff>=0.6.0"]
+
 [project.scripts]
 deep-memory = "deep_memory.cli:app"
 deep-memory-mcp = "deep_memory.mcp_server:main"
@@ -35,6 +38,16 @@ deep-memory-mcp = "deep_memory.mcp_server:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/deep_memory"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/deep_memory",
+  "/README.md",
+  "/pyproject.toml",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
@@ -42,6 +55,7 @@ target-version = "py310"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["src", "."]
 
 [tool.deep-memory.embedding]
 enabled = false

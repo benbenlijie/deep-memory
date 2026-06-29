@@ -4,6 +4,16 @@
 
 Contributing starts from a clear mechanism, boundary, and evidence trail: what memory bottleneck does this change address, how is it verified, and does it preserve the local-first, inspectable, user-controlled safety boundary?
 
+## Start with a good first issue
+
+New here? Start with the published [`good first issue` list](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue).
+
+1. Browse the good-first-issues and pick one narrow task.
+2. Comment on the issue to claim it and share any assumptions before starting.
+3. Run the suggested setup and verification commands from the issue body.
+4. Keep the change scoped to the files and acceptance checklist in that issue.
+5. Open a PR with the commands you ran and any remaining uncertainty.
+
 ## 5-minute dev setup
 
 Prerequisites:
@@ -125,7 +135,7 @@ If you are not ready to write code yet, the highest-leverage contribution is a c
 
 ## Good first issues
 
-If you want a small first contribution, start with `docs/GOOD_FIRST_ISSUE_DRAFTS.md`. That draft list is written to be opened with minimal editing and keeps the issue shapes narrow, testable, and aligned with the current controlled-preview positioning.
+If you want a small first contribution, start with the published [`good first issue` list](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue). `docs/GOOD_FIRST_ISSUE_DRAFTS.md` keeps the source draft list and maps the current batch to issue numbers.
 
 Priority newcomer paths from the current draft batch:
 

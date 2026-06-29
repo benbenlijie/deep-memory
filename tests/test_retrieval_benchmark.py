@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -34,6 +33,6 @@ def test_retrieval_benchmark_produces_category_metrics_and_hybrid_lifts_semantic
     assert result["recall"]["categories"]["synonym_match"]["modes"]["hybrid"]["recall@5"] > result["recall"]["categories"]["synonym_match"]["modes"]["fts5"]["recall@5"]
     assert result["recall"]["categories"]["cross_lingual"]["modes"]["hybrid"]["recall@5"] > result["recall"]["categories"]["cross_lingual"]["modes"]["fts5"]["recall@5"]
     hybrid_p95_ms = result["performance"]["search_latency"]["1000"]["hybrid"]["p95_ms"]
-    assert hybrid_p95_ms < 50 or time.get_clock_info("perf_counter").resolution < 1e-3
+    assert hybrid_p95_ms < 50
     assert result["performance"]["embedding_latency"]["per_text_ms"] >= 0
     assert result["performance"]["memory_usage"]["1000"]["vector_overhead_bytes"] > 0

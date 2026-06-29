@@ -730,7 +730,6 @@ class DeepMemory:
         )
         self._reverse_trust_conflicts(normalized_content, source_info, conflict_with_id=record_id, exclude_ids={record_id})
         self._store_embedding_if_available(record_id, normalized_content)
-        self._invalidate_vector_search_cache()
         self.conn.commit()
         return self.get(record_id)
 
@@ -802,6 +801,7 @@ class DeepMemory:
             """,
             (backend.model_name, backend.model_version, now, memory_id),
         )
+        self._invalidate_vector_search_cache()
 
     def backfill_embeddings(
         self,
@@ -822,6 +822,7 @@ class DeepMemory:
         scanned = len(rows)
         skipped = 0
         pending: list[tuple[str, str]] = []
+        cache_invalidated = False
         for row in rows:
             if row["embedding_model"] == backend.model_name and row["embedding_version"] == backend.model_version:
                 skipped += 1
@@ -857,6 +858,9 @@ class DeepMemory:
                     """,
                     (backend.model_name, backend.model_version, now, memory_id),
                 )
+            if batch and not cache_invalidated:
+                self._invalidate_vector_search_cache()
+                cache_invalidated = True
             self.conn.commit()
             backfilled += len(batch)
             if progress_callback is not None:
@@ -1060,10 +1064,17 @@ class DeepMemory:
         if not rows:
             return (rows, None, None)
         try:
-            matrix = np.vstack(
-                [np.frombuffer(row["embedding"], dtype="<f4") for row in rows]
-            ).astype(np.float32, copy=False)
-        except ValueError:
+            first_dim = len(_unpack_embedding(rows[0]["embedding"]))
+            matrix = np.fromiter(
+                (
+                    value
+                    for row in rows
+                    for value in _unpack_embedding(row["embedding"])
+                ),
+                dtype=np.float32,
+                count=len(rows) * first_dim,
+            ).reshape(len(rows), first_dim)
+        except (ValueError, TypeError):
             return (rows, None, None)
         norms = np.linalg.norm(matrix, axis=1)
         return (rows, matrix, norms)
@@ -1112,13 +1123,13 @@ class DeepMemory:
         scores[valid] = (matrix[valid] @ query_array) / (norms[valid] * query_norm)
 
         top_k = min(limit, len(rows))
-        indexes = sorted(
-            range(len(rows)),
-            key=lambda idx: (float(scores[idx]), -idx),
-            reverse=True,
-        )[:top_k]
+        if top_k >= len(rows):
+            indexes = np.argsort(scores)[::-1]
+        else:
+            partition = np.argpartition(scores, -top_k)[-top_k:]
+            indexes = partition[np.argsort(scores[partition])[::-1]]
         return [
-            RetrievalCandidate(record=_row_to_record(rows[index]), vector_score=float(scores[index]))
+            RetrievalCandidate(record=_row_to_record(rows[int(index)]), vector_score=float(scores[int(index)]))
             for index in indexes
         ]
 

@@ -266,7 +266,9 @@ uv run deep-memory webui ~/.deep-memory/deep-memory.db --host 127.0.0.1 --port 8
 # open http://127.0.0.1:8765
 ```
 
-The WebUI can list, search, edit, and soft-delete records. It binds to `127.0.0.1` by default, now serves `/favicon.svg` and `/favicon.ico`, and uses the same project icon in the browser tab.
+`deep-memory webui ...` is the supported launch path. `deep-memory-webui` is not the current console script or launch contract.
+
+The WebUI can list, search, edit, and soft-delete records. It binds to `127.0.0.1` by default, now serves `/favicon.svg` and `/favicon.ico`, and uses the same project icon in the browser tab. If port `8765` is already occupied, choose another free port with `--port`, for example `--port 8876`.
 
 Export and audit:
 
@@ -352,6 +354,8 @@ Read [`docs/MEMORY_POLICY.md`](docs/MEMORY_POLICY.md) for the allow / deny / req
 ## Contributing
 
 This is a controlled preview lane, not a broad launch claim. Contributions should make the memory layer more inspectable, reproducible, scoped, or easier to run.
+
+New here? Start with a [good first issue](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue), comment to claim one, run its suggested commands, and open a small PR with the evidence.
 
 Good starting paths:
 

@@ -277,3 +277,15 @@ Suggested commands:
 uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json
 uv run pytest -q tests/test_chinese_retrieval_eval.py
 ```
+
+## Published issues
+
+| Draft | GitHub issue |
+| --- | --- |
+| Add privacy-boundary eval fixtures for obvious deny cases | #6 |
+| Add workspace scope-isolation regression case with clear contributor narrative | #7 |
+| Polish WebUI empty state for a fresh local database | #8 |
+| Add Hermes adapter smoke transcript example | #9 |
+| Expand docs troubleshooting for first-time local setup failures | #10 |
+| Add export/import example for inspectable backup and restore flow | #11 |
+| Add mixed Chinese/English retrieval fixture examples with contributor notes | #12 |

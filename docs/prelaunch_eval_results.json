@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+    "numpy_available": true,
+    "sentence_transformers_available": false
+  },
+  "config": {
+    "sizes": [
+      1000,
+      10000,
+      50000
+    ],
+    "dimensions": 512,
+    "latency_iterations": 10
+  },
+  "sizes": {
+    "1000": {
+      "seed": {
+        "seconds": 0.063,
+        "rows_per_second": 15784.061
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 39.927,
+          "warm": {
+            "p50_ms": 39.034,
+            "p95_ms": 53.772,
+            "p99_ms": 53.772,
+            "mean_ms": 40.748
+          }
+        },
+        "vector": {
+          "cold_ms": 124.675,
+          "warm": {
+            "p50_ms": 26.706,
+            "p95_ms": 46.553,
+            "p99_ms": 46.553,
+            "mean_ms": 29.8
+          }
+        },
+        "hybrid": {
+          "cold_ms": 33.902,
+          "warm": {
+            "p50_ms": 31.414,
+            "p95_ms": 39.187,
+            "p99_ms": 39.187,
+            "mean_ms": 32.387
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330",
+            "mem-000331",
+            "mem-000332",
+            "mem-000333",
+            "mem-000334",
+            "mem-000335"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-a",
+            "workspace-b",
+            "mem-000329",
+            "mem-000330"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 0.064,
+        "rows_per_second": 15532.926,
+        "scanned": 1000,
+        "backfilled": 1000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 4751360,
+        "embedding_rows": 1000,
+        "embedding_blob_bytes": 2048000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-000327",
+            "mem-000329",
+            "mem-000330"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    },
+    "10000": {
+      "seed": {
+        "seconds": 0.568,
+        "rows_per_second": 17602.021
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 59.571,
+          "warm": {
+            "p50_ms": 55.839,
+            "p95_ms": 56.389,
+            "p99_ms": 56.389,
+            "mean_ms": 55.832
+          }
+        },
+        "vector": {
+          "cold_ms": 306.056,
+          "warm": {
+            "p50_ms": 28.993,
+            "p95_ms": 32.185,
+            "p99_ms": 32.185,
+            "mean_ms": 29.452
+          }
+        },
+        "hybrid": {
+          "cold_ms": 30.272,
+          "warm": {
+            "p50_ms": 29.973,
+            "p95_ms": 36.62,
+            "p99_ms": 36.62,
+            "mean_ms": 31.201
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335",
+            "mem-003334",
+            "mem-003333",
+            "mem-003332",
+            "mem-003331",
+            "mem-003330"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-b",
+            "workspace-a",
+            "mem-003337",
+            "mem-003336"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 0.617,
+        "rows_per_second": 16194.728,
+        "scanned": 10000,
+        "backfilled": 10000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 46284800,
+        "embedding_rows": 10000,
+        "embedding_blob_bytes": 20480000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-003338",
+            "mem-003336",
+            "mem-003335"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    },
+    "50000": {
+      "seed": {
+        "seconds": 2.946,
+        "rows_per_second": 16970.452
+      },
+      "latency": {
+        "fts5": {
+          "cold_ms": 126.355,
+          "warm": {
+            "p50_ms": 124.744,
+            "p95_ms": 125.3,
+            "p99_ms": 125.3,
+            "mean_ms": 124.803
+          }
+        },
+        "vector": {
+          "cold_ms": 1561.805,
+          "warm": {
+            "p50_ms": 52.822,
+            "p95_ms": 68.618,
+            "p99_ms": 68.618,
+            "mean_ms": 54.873
+          }
+        },
+        "hybrid": {
+          "cold_ms": 51.156,
+          "warm": {
+            "p50_ms": 55.933,
+            "p95_ms": 96.92,
+            "p99_ms": 96.92,
+            "mean_ms": 60.522
+          }
+        }
+      },
+      "correctness": {
+        "known_target_top1": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        },
+        "known_target_top5": {
+          "passed": true,
+          "top_ids": [
+            "known-target",
+            "mixed-language",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        },
+        "scope_isolation": {
+          "passed": true,
+          "workspace_a_top_ids": [
+            "workspace-a"
+          ],
+          "workspace_b_top_ids": [
+            "workspace-b"
+          ]
+        },
+        "lifecycle_filtering": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670",
+            "mem-016669",
+            "mem-016668",
+            "mem-016667",
+            "mem-016666",
+            "mem-016665"
+          ]
+        },
+        "mixed_language_hybrid": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "workspace-b",
+            "workspace-a",
+            "mem-016672",
+            "mem-016670"
+          ]
+        }
+      },
+      "backfill": {
+        "seconds": 3.305,
+        "rows_per_second": 15129.237,
+        "scanned": 50000,
+        "backfilled": 50000,
+        "skipped": 0
+      },
+      "memory_usage": {
+        "db_bytes": 231116800,
+        "embedding_rows": 50000,
+        "embedding_blob_bytes": 102400000
+      },
+      "reproducibility": {
+        "runs": [
+          [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ],
+          [
+            "mixed-language",
+            "known-target",
+            "mem-016672",
+            "mem-016671",
+            "mem-016670"
+          ]
+        ],
+        "stable_top1": true
+      },
+      "fallback": {
+        "no_numpy_functional": {
+          "passed": true,
+          "top_ids": [
+            "mixed-language",
+            "known-target",
+            "mem-000000",
+            "mem-000001",
+            "mem-000002"
+          ]
+        },
+        "empty_cache_shape": [
+          0,
+          null,
+          null
+        ]
+      }
+    }
+  }
+}
