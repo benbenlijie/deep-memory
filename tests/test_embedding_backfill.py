@@ -85,7 +85,7 @@ def test_search_vector_mode_filters_by_embedding_version(tmp_path):
     mem._embedding_backend = new_backend
     mem._embedding_backend_resolved = True
 
-    results = mem.search("release", retrieval_mode="vector", embedding_version=2, cross_workspace=True, limit=1)
+    results = mem.search("release", retrieval_mode="vector", embedding_version=2, cross_scope=True, limit=1)
 
     assert [result.record.id for result in results] == [new.id]
 

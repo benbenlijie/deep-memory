@@ -177,10 +177,8 @@ def add(
     importance: float = typer.Option(0.5),
     confidence: float = typer.Option(0.8),
     source: str | None = typer.Option(None),
-    scope: str = typer.Option("workspace", help="global|user|tenant|workspace|project"),
-    workspace: str | None = typer.Option(None, help="Workspace name; inferred from cwd when omitted for workspace scope"),
-    tenant: str | None = typer.Option(None),
-    user_id: str | None = typer.Option(None, "--user-id"),
+    scope: str = typer.Option("workspace", "--scope", help="global|user|tenant|workspace|project"),
+    scope_id: str | None = typer.Option(None, "--scope-id", help="Custom namespace under the fixed scope"),
 ) -> None:
     """Add one memory record."""
     try:
@@ -188,17 +186,18 @@ def add(
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
     mem = DeepMemory(db)
-    record = mem.add(
-        content,
-        kind=kind,  # type: ignore[arg-type]
-        importance=importance,
-        confidence=confidence,
-        source=source,
-        scope=scope,  # type: ignore[arg-type]
-        workspace=workspace,
-        tenant=tenant,
-        user_id=user_id,
-    )
+    try:
+        record = mem.add(
+            content,
+            kind=kind,  # type: ignore[arg-type]
+            importance=importance,
+            confidence=confidence,
+            source=source,
+            scope=scope,  # type: ignore[arg-type]
+            scope_id=scope_id,
+        )
+    finally:
+        mem.close()
     console.print_json(json.dumps(_record_payload(record), ensure_ascii=False))
 
 
@@ -210,9 +209,10 @@ def search(
     kind: str | None = typer.Option(None),
     retrieval_mode: str = typer.Option("auto", "--retrieval-mode", help="auto|fts5|vector|hybrid"),
     as_of: str | None = typer.Option(None, "--as-of", help="Only return records valid as of YYYY-MM-DD or ISO timestamp"),
-    workspace: str | None = typer.Option(None, help="Workspace name; inferred from cwd when omitted"),
+    scope: str | None = typer.Option(None, "--scope", help="global|user|tenant|workspace|project"),
+    scope_id: str | None = typer.Option(None, "--scope-id", help="Custom namespace under the fixed scope"),
     include_global: bool = typer.Option(True, "--include-global/--no-include-global", help="Include explicitly global memories"),
-    cross_workspace: bool = typer.Option(False, "--all-workspaces", help="Search across workspace/project scoped memories"),
+    cross_scope: bool = typer.Option(False, "--all-scopes", help="Search across all scoped memories"),
     allow_fallback: bool = typer.Option(True, "--fallback/--no-fallback", help="Fill results from lower-trust memories when the high-trust bucket is short"),
     embedding_version: int | None = typer.Option(None, "--embedding-version", help="Restrict vector/hybrid search to a specific embedding generation"),
 ) -> None:
@@ -220,26 +220,42 @@ def search(
     if retrieval_mode not in {"auto", "fts5", "vector", "hybrid"}:
         raise typer.BadParameter("--retrieval-mode must be auto, fts5, vector, or hybrid")
     mem = DeepMemory(db)
-    rows = mem.search(
-        query,
-        limit=limit,
-        kind=kind,
-        retrieval_mode=retrieval_mode,  # type: ignore[arg-type]
-        as_of=as_of,
-        workspace=workspace,
-        include_global=include_global,
-        cross_workspace=cross_workspace,
-        allow_fallback=allow_fallback,
-        embedding_version=embedding_version,
-        caller="cli",
-    )  # type: ignore[arg-type]
-    table = Table("score", "kind", "content", "source")
+    try:
+        rows = mem.search(
+            query,
+            limit=limit,
+            kind=kind,
+            retrieval_mode=retrieval_mode,  # type: ignore[arg-type]
+            as_of=as_of,
+            scope=scope,  # type: ignore[arg-type]
+            scope_id=scope_id,
+            include_global=include_global,
+            cross_scope=cross_scope,
+            allow_fallback=allow_fallback,
+            embedding_version=embedding_version,
+            caller="cli",
+        )
+    finally:
+        mem.close()
+    table = Table("score", "scope", "scope_id", "kind", "content", "source")
     for result in rows:
         source = result.record.source
         if not isinstance(source, str):
             source = json.dumps(source, ensure_ascii=False) if source is not None else ""
-        table.add_row(str(result.score), result.record.kind, result.record.content, source)
+        table.add_row(
+            str(result.score),
+            result.record.scope,
+            result.record.scope_id or "",
+            result.record.kind,
+            result.record.content,
+            source,
+        )
     console.print(table)
+    for result in rows:
+        typer.echo(
+            f"score={result.score} scope={result.record.scope} scope_id={result.record.scope_id or ''} "
+            f"kind={result.record.kind} content={result.record.content}"
+        )
 
 
 @app.command("backfill-embeddings")
@@ -294,9 +310,7 @@ def scope_promote(
     db: Path,
     record_id: str,
     to: str = typer.Option(..., "--to", help="Promotion target: global, tenant, user, workspace, or project"),
-    workspace: str | None = typer.Option(None),
-    tenant: str | None = typer.Option(None),
-    user_id: str | None = typer.Option(None, "--user-id"),
+    scope_id: str | None = typer.Option(None, "--scope-id", help="Custom namespace under the target scope"),
 ) -> None:
     """Promote or move one memory record into an explicit retrieval scope."""
 
@@ -307,9 +321,7 @@ def scope_promote(
         record = mem.promote_scope(
             record_id,
             to=to,  # type: ignore[arg-type]
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope_id=scope_id,
         )
     except KeyError as exc:
         raise typer.BadParameter(f"unknown memory id: {record_id}") from exc
@@ -323,9 +335,7 @@ def scope_demote(
     db: Path,
     record_id: str,
     to: str = typer.Option(..., "--to", help="Demotion target: workspace, tenant, or user"),
-    workspace: str | None = typer.Option(None),
-    tenant: str | None = typer.Option(None),
-    user_id: str | None = typer.Option(None, "--user-id"),
+    scope_id: str | None = typer.Option(None, "--scope-id", help="Custom namespace under the target scope"),
 ) -> None:
     """Demote a memory from global into a narrower retrieval scope."""
 
@@ -336,9 +346,7 @@ def scope_demote(
         record = mem.promote_scope(
             record_id,
             to=to,  # type: ignore[arg-type]
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope_id=scope_id,
         )
     except KeyError as exc:
         raise typer.BadParameter(f"unknown memory id: {record_id}") from exc
@@ -349,20 +357,18 @@ def scope_demote(
 
 @scope_app.command("list")
 def scope_list(db: Path) -> None:
-    """Print counts grouped by scope and boundary fields."""
+    """Print counts grouped by scope and scope_id."""
 
     mem = DeepMemory(db)
     try:
         rows = mem.scope_distribution()
     finally:
         mem.close()
-    table = Table("scope", "workspace", "tenant", "user_id", "count")
+    table = Table("scope", "scope_id", "count")
     for row in rows:
         table.add_row(
             str(row["scope"]),
-            str(row["workspace"] or ""),
-            str(row["tenant"] or ""),
-            str(row["user_id"] or ""),
+            str(row["scope_id"] or ""),
             str(row["count"]),
         )
     console.print(table)

@@ -56,7 +56,7 @@ def test_add_without_vector_extra_gracefully_skips_embedding(tmp_path, monkeypat
     assert rows == []
     assert record.embedding_model is None
     assert record.embedding_version is None
-    assert mem.search("FTS5", cross_workspace=True)
+    assert mem.search("FTS5", cross_scope=True)
 
 
 def test_embedding_schema_migration_adds_memory_embeddings_to_legacy_database(tmp_path):

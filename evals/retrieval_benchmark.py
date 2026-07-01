@@ -28,7 +28,7 @@ class BenchmarkEmbeddingBackend(DeterministicEmbeddingBackend):
             ("privacy", "security", "safety", "隐私", "安全"),
             ("backup", "snapshot", "restore", "备份", "恢复"),
             ("database", "sqlite", "storage", "数据库", "存储"),
-            ("workspace", "project", "repo", "项目", "仓库"),
+            ("scope_id", "project", "repo", "项目", "仓库"),
             ("review", "audit", "verify", "评审", "复核"),
             ("memory", "recall", "context", "记忆", "上下文"),
         ]
@@ -129,7 +129,7 @@ def _evaluate_recall(mem: DeepMemory) -> dict[str, object]:
     }
     for item in BENCHMARK_QUERIES:
         for mode in ("fts5", "vector", "hybrid"):
-            results = mem.search(item.query, limit=5, retrieval_mode=mode, cross_workspace=True)
+            results = mem.search(item.query, limit=5, retrieval_mode=mode, cross_scope=True)
             categories[item.category][mode].append(_rank_for_query(results, item.target_content))
     rendered_categories: dict[str, object] = {}
     overall: dict[str, list[int | None]] = {mode: [] for mode in ("fts5", "vector", "hybrid")}
@@ -195,7 +195,7 @@ def _measure_search_latency(size: int, iterations: int) -> dict[str, dict[str, f
         for mode in ("fts5", "vector", "hybrid"):
             for _ in range(iterations):
                 start = time.perf_counter()
-                mem.search(query, limit=5, retrieval_mode=mode, cross_workspace=True)
+                mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
                 samples[mode].append((time.perf_counter() - start) * 1000)
         mem.close()
     return {mode: _latency_stats(values) for mode, values in samples.items()}

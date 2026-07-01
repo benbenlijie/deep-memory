@@ -22,9 +22,8 @@ class HermesFact:
     importance: float = 0.7
     confidence: float = 0.8
     source: str = DEFAULT_HERMES_SOURCE
-    workspace: str | None = None
-    tenant: str | None = None
-    user_id: str | None = None
+    scope: str = "global"
+    scope_id: str | None = None
     agent: str | None = DEFAULT_HERMES_SOURCE
     event_time: str | None = None
 
@@ -69,19 +68,16 @@ def write_hermes_session_facts(
                     importance=fact.importance,
                     confidence=fact.confidence,
                     source=fact.source,
-                    scope="workspace" if fact.workspace else ("tenant" if fact.tenant else "user" if fact.user_id else "global"),
-                    workspace=fact.workspace,
-                    tenant=fact.tenant,
-                    user_id=fact.user_id,
+                    scope=fact.scope,  # type: ignore[arg-type]
+                    scope_id=fact.scope_id,
                     agent=fact.agent,
                     event_time=fact.event_time,
                     idempotency_key=build_idempotency_key(
                         fact.content,
                         kind=fact.kind,
                         source=fact.source,
-                        workspace=fact.workspace,
-                        tenant=fact.tenant,
-                        user_id=fact.user_id,
+                        scope=fact.scope,  # type: ignore[arg-type]
+                        scope_id=fact.scope_id,
                         agent=fact.agent,
                     ),
                     duplicate_policy="skip",
@@ -97,9 +93,7 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
     default_source = f"{DEFAULT_HERMES_SOURCE}:{session_id}" if session_id else DEFAULT_HERMES_SOURCE
     raw_context = event.get("context")
     context = cast(dict[str, Any], raw_context) if isinstance(raw_context, dict) else {}
-    default_workspace = _optional_str(event.get("workspace") or context.get("workspace"))
-    default_tenant = _optional_str(event.get("tenant") or context.get("tenant"))
-    default_user_id = _optional_str(event.get("user_id") or context.get("user_id"))
+    default_scope, default_scope_id = _scope_from_payload(event, context)
     default_agent = _optional_str(event.get("agent") or context.get("agent")) or DEFAULT_HERMES_SOURCE
     default_event_time = _event_time_from_event(event, context)
     facts = event.get("facts") or []
@@ -113,9 +107,8 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
             importance = 0.7
             confidence = 0.8
             source = default_source
-            workspace = default_workspace
-            tenant = default_tenant
-            user_id = default_user_id
+            scope = default_scope
+            scope_id = default_scope_id
             agent = default_agent
             event_time = default_event_time
         elif isinstance(raw, dict):
@@ -124,9 +117,7 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
             importance = float(raw.get("importance", 0.7))
             confidence = float(raw.get("confidence", 0.8))
             source = str(raw.get("source") or default_source)
-            workspace = _optional_str(raw.get("workspace") or default_workspace)
-            tenant = _optional_str(raw.get("tenant") or default_tenant)
-            user_id = _optional_str(raw.get("user_id") or default_user_id)
+            scope, scope_id = _scope_from_payload(raw, {"scope": default_scope, "scope_id": default_scope_id})
             agent = _optional_str(raw.get("agent") or default_agent)
             event_time = _optional_str(raw.get("event_time") or raw.get("timestamp") or raw.get("created_at")) or default_event_time
         else:
@@ -141,12 +132,29 @@ def _facts_from_event(event: dict[str, Any]) -> Iterator[HermesFact]:
             importance=importance,
             confidence=confidence,
             source=source,
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope=scope,
+            scope_id=scope_id,
             agent=agent,
             event_time=event_time,
         )
+
+
+def _scope_from_payload(payload: dict[str, Any], fallback: dict[str, Any]) -> tuple[str, str | None]:
+    scope = _optional_str(payload.get("scope") or fallback.get("scope"))
+    scope_id = _optional_str(payload.get("scope_id") or fallback.get("scope_id"))
+    if scope is not None:
+        return scope, scope_id
+
+    legacy_workspace = _optional_str(payload.get("workspace") or fallback.get("workspace"))
+    if legacy_workspace is not None:
+        return "workspace", legacy_workspace
+    legacy_tenant = _optional_str(payload.get("tenant") or fallback.get("tenant"))
+    if legacy_tenant is not None:
+        return "tenant", legacy_tenant
+    legacy_user_id = _optional_str(payload.get("user_id") or fallback.get("user_id"))
+    if legacy_user_id is not None:
+        return "user", legacy_user_id
+    return "global", None
 
 
 def _event_time_from_event(event: dict[str, Any], context: dict[str, Any]) -> str | None:

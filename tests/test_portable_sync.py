@@ -33,6 +33,11 @@ def test_portable_export_writes_jsonl_and_manifest(tmp_path):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert [row["id"] for row in rows] == [active.id]
     assert rows[0]["portable_schema_version"] == 1
+    assert rows[0]["scope"] == "workspace"
+    assert rows[0]["scope_id"] is not None
+    assert "workspace" not in rows[0]
+    assert "tenant" not in rows[0]
+    assert "user_id" not in rows[0]
     assert manifest["schema_version"] == 1
     assert manifest["record_count"] == 1
     assert manifest["checksum"]
@@ -72,6 +77,7 @@ def test_portable_import_merge_round_trip_without_duplicates(tmp_path):
         kind="semantic",
         source={"agent": "human", "trust_level": "user", "origin_type": "explicit"},
         scope="project",
+        scope_id="deep-memory",
     )
     source.close()
     export_result = CliRunner().invoke(app, ["export", str(source_db), "--portable", "--output", str(export_dir)])
@@ -87,6 +93,7 @@ def test_portable_import_merge_round_trip_without_duplicates(tmp_path):
     assert len(rows) == 1
     assert rows[0].content == first.content
     assert rows[0].scope == "project"
+    assert rows[0].scope_id == "deep-memory"
     assert rows[0].idempotency_key
     imported.close()
 
@@ -103,6 +110,7 @@ def test_portable_import_merge_prefers_higher_trust_then_newer_event_time(tmp_pa
         kind="semantic",
         source={"agent": "auto", "trust_level": "external", "origin_type": "imported"},
         scope="project",
+        scope_id="deep-memory",
         event_time="2026-01-01T00:00:00+00:00",
     )
     low.close()
@@ -112,6 +120,7 @@ def test_portable_import_merge_prefers_higher_trust_then_newer_event_time(tmp_pa
         kind="semantic",
         source={"agent": "human", "trust_level": "user", "origin_type": "explicit"},
         scope="project",
+        scope_id="deep-memory",
         event_time="2025-01-01T00:00:00+00:00",
     )
     high.close()
@@ -121,6 +130,7 @@ def test_portable_import_merge_prefers_higher_trust_then_newer_event_time(tmp_pa
         kind="semantic",
         source={"agent": "human", "trust_level": "user", "origin_type": "explicit"},
         scope="project",
+        scope_id="deep-memory",
         event_time="2027-01-01T00:00:00+00:00",
     )
     newer.close()
@@ -171,27 +181,30 @@ def test_portable_import_accepts_legacy_schema_version_zero(tmp_path):
     assert len(rows) == 1
     assert rows[0].content == "旧版 portable 记录"
     assert rows[0].source_info.agent == "legacy-agent"
+    assert rows[0].scope_id is None
 
 
 def test_diff_databases_reports_only_in_a_only_in_b_and_conflicts(tmp_path):
     db_a = tmp_path / "a.db"
     db_b = tmp_path / "b.db"
     a = DeepMemory(db_a)
-    a.add("仅在 A", kind="semantic", scope="project")
+    a.add("仅在 A", kind="semantic", scope="project", scope_id="deep-memory")
     a.add(
         "共同事实 A 版本",
         kind="semantic",
         scope="project",
+        scope_id="deep-memory",
         source={"agent": "a", "trust_level": "external", "origin_type": "imported"},
         event_time="2026-01-01T00:00:00+00:00",
     )
     a.close()
     b = DeepMemory(db_b)
-    b.add("仅在 B", kind="semantic", scope="project")
+    b.add("仅在 B", kind="semantic", scope="project", scope_id="deep-memory")
     b.add(
         "共同事实 B 版本",
         kind="semantic",
         scope="project",
+        scope_id="deep-memory",
         source={"agent": "b", "trust_level": "user", "origin_type": "explicit"},
         event_time="2027-01-01T00:00:00+00:00",
     )

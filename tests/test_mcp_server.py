@@ -23,7 +23,8 @@ def test_mcp_add_refuses_policy_denied_memory(tmp_path):
     assert memory_stats(db_path=str(db))["total"] == 0
 
 
-def test_mcp_add_search_and_stats_tools_share_database(tmp_path):
+def test_mcp_add_search_and_stats_tools_share_database(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     db = tmp_path / "memory.db"
 
     added = add_memory(
@@ -38,6 +39,7 @@ def test_mcp_add_search_and_stats_tools_share_database(tmp_path):
     assert added["kind"] == "semantic"
     assert added["content"] == "用户偏好：中文为主，技术术语用英文"
     assert added["source"] == "mcp-test"
+    assert added["scope_id"] == tmp_path.name
 
     results = search_memory(db_path=str(db), query="用户偏好", limit=3)
 
@@ -93,17 +95,48 @@ def test_mcp_add_defaults_to_workspace_scope_and_search_supports_scope_flags(tmp
     )
 
     assert added["scope"] == "workspace"
-    assert added["workspace"] == tmp_path.name
+    assert added["scope_id"] == tmp_path.name
 
     results = search_memory(
         db_path=str(db),
         query="Workspace fact",
         include_global=False,
-        cross_workspace=True,
+        cross_scope=True,
     )
 
     assert results
     assert results[0]["record"]["scope"] == "workspace"
+    assert results[0]["record"]["scope_id"] == tmp_path.name
+
+
+def test_mcp_project_scope_id_is_canonical_namespace(tmp_path):
+    db = tmp_path / "memory.db"
+
+    added = add_memory(
+        db_path=str(db),
+        content="Project fact: MCP exposes scope_id",
+        scope="project",
+        scope_id="deep-memory",
+    )
+    add_memory(
+        db_path=str(db),
+        content="Project fact: other namespace",
+        scope="project",
+        scope_id="other-project",
+    )
+
+    results = search_memory(
+        db_path=str(db),
+        query="Project fact",
+        scope="project",
+        scope_id="deep-memory",
+        include_global=False,
+        limit=10,
+    )
+
+    assert added["scope"] == "project"
+    assert added["scope_id"] == "deep-memory"
+    assert [result["record"]["scope_id"] for result in results] == ["deep-memory"]
 
 
 def test_mcp_scope_promotion_is_exposed_through_python_api(tmp_path, monkeypatch):
@@ -114,6 +147,6 @@ def test_mcp_scope_promotion_is_exposed_through_python_api(tmp_path, monkeypatch
     try:
         promoted = mem.promote_scope(added["id"], to="global")
         assert promoted.scope == "global"
-        assert promoted.workspace is None
+        assert promoted.scope_id is None
     finally:
         mem.close()

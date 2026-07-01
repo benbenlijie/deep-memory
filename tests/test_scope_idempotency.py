@@ -16,7 +16,8 @@ def test_idempotency_key_skip_policy_prevents_unbounded_duplicate_imports(tmp_pa
         "Project convention: adapter imports explicit facts only",
         kind="procedural",
         source="codex:same-run",
-        workspace="/repo/a",
+        scope="workspace",
+        scope_id="/repo/a",
         agent="codex",
     )
 
@@ -25,7 +26,7 @@ def test_idempotency_key_skip_policy_prevents_unbounded_duplicate_imports(tmp_pa
         kind="procedural",
         source="codex:same-run",
         scope="workspace",
-        workspace="/repo/a",
+        scope_id="/repo/a",
         agent="codex",
         idempotency_key=key,
         duplicate_policy="skip",
@@ -35,7 +36,7 @@ def test_idempotency_key_skip_policy_prevents_unbounded_duplicate_imports(tmp_pa
         kind="procedural",
         source="codex:same-run",
         scope="workspace",
-        workspace="/repo/a",
+        scope_id="/repo/a",
         agent="codex",
         idempotency_key=key,
         duplicate_policy="skip",
@@ -45,41 +46,45 @@ def test_idempotency_key_skip_policy_prevents_unbounded_duplicate_imports(tmp_pa
     assert mem.stats()["total"] == 1
 
 
-def test_workspace_scoped_search_does_not_mix_different_workspaces_by_default(tmp_path):
+def test_scope_id_scoped_search_does_not_mix_different_scope_ids_by_default(tmp_path):
     db = tmp_path / "memory.db"
     mem = DeepMemory(db)
     mem.add(
         "Build command: uv run pytest -q",
         scope="workspace",
-        workspace="/repo/a",
-        idempotency_key=build_idempotency_key("Build command: uv run pytest -q", workspace="/repo/a"),
+        scope_id="/repo/a",
+        idempotency_key=build_idempotency_key(
+            "Build command: uv run pytest -q", scope="workspace", scope_id="/repo/a"
+        ),
     )
     mem.add(
         "Build command: npm test",
         scope="workspace",
-        workspace="/repo/b",
-        idempotency_key=build_idempotency_key("Build command: npm test", workspace="/repo/b"),
+        scope_id="/repo/b",
+        idempotency_key=build_idempotency_key(
+            "Build command: npm test", scope="workspace", scope_id="/repo/b"
+        ),
     )
 
-    results = mem.search("Build command", workspace="/repo/a", limit=10)
+    results = mem.search("Build command", scope="workspace", scope_id="/repo/a", limit=10)
 
-    assert [row.record.workspace for row in results] == ["/repo/a"]
+    assert [row.record.scope_id for row in results] == ["/repo/a"]
     assert [row.record.content for row in results] == ["Build command: uv run pytest -q"]
 
 
-def test_global_memory_is_visible_inside_workspace_scope(tmp_path):
+def test_global_memory_is_visible_inside_scope_id_scope(tmp_path):
     db = tmp_path / "memory.db"
     mem = DeepMemory(db)
     mem.add("User preference: concise answers", scope="global")
 
-    results = mem.search("concise answers", workspace="/repo/a", limit=5)
+    results = mem.search("concise answers", scope="workspace", scope_id="/repo/a", limit=5)
 
     assert results
     assert results[0].record.scope == "global"
-    assert results[0].record.workspace is None
+    assert results[0].record.scope_id is None
 
 
-def test_add_auto_infers_workspace_from_cwd_when_omitted(tmp_path, monkeypatch):
+def test_add_auto_infers_scope_id_from_cwd_when_omitted(tmp_path, monkeypatch):
     project = tmp_path / "my-project"
     project.mkdir()
     monkeypatch.chdir(project)
@@ -88,10 +93,10 @@ def test_add_auto_infers_workspace_from_cwd_when_omitted(tmp_path, monkeypatch):
     record = mem.add("Project convention: pytest is the default verification command")
 
     assert record.scope == "workspace"
-    assert record.workspace == "my-project"
+    assert record.scope_id == "my-project"
 
 
-def test_search_auto_infers_workspace_when_omitted(tmp_path, monkeypatch):
+def test_search_auto_infers_scope_id_when_omitted(tmp_path, monkeypatch):
     my_project = tmp_path / "my-project"
     other_project = tmp_path / "other"
     my_project.mkdir()
@@ -104,53 +109,58 @@ def test_search_auto_infers_workspace_when_omitted(tmp_path, monkeypatch):
     monkeypatch.chdir(other_project)
     hidden_elsewhere = mem.search("Build command", include_global=False, limit=10)
 
-    assert [row.record.workspace for row in found_in_project] == ["my-project"]
+    assert [row.record.scope_id for row in found_in_project] == ["my-project"]
     assert hidden_elsewhere == []
 
 
-def test_cross_workspace_true_returns_all_workspace_records(tmp_path):
+def test_cross_scope_true_returns_all_scoped_records(tmp_path):
     mem = DeepMemory(tmp_path / "memory.db")
-    mem.add("Build command: run pytest for repo-a", scope="workspace", workspace="repo-a")
-    mem.add("Build command: run npm test for repo-b", scope="workspace", workspace="repo-b")
+    mem.add("Build command: run pytest for repo-a", scope="workspace", scope_id="repo-a")
+    mem.add("Build command: run npm test for repo-b", scope="workspace", scope_id="repo-b")
+    mem.add("Build command: run uv for project", scope="project", scope_id="deep-memory")
 
-    results = mem.search("Build command", include_global=False, cross_workspace=True, limit=10)
+    results = mem.search("Build command", include_global=False, cross_scope=True, limit=10)
 
-    assert {row.record.workspace for row in results} == {"repo-a", "repo-b"}
+    assert {(row.record.scope, row.record.scope_id) for row in results} == {
+        ("workspace", "repo-a"),
+        ("workspace", "repo-b"),
+        ("project", "deep-memory"),
+    }
 
 
-def test_include_global_false_strictly_isolates_workspace(tmp_path):
+def test_include_global_false_strictly_isolates_scope_id(tmp_path):
     mem = DeepMemory(tmp_path / "memory.db")
     mem.add("Searchable command: global default", scope="global")
-    mem.add("Searchable command: workspace default", scope="workspace", workspace="repo-a")
+    mem.add("Searchable command: scope_id default", scope="workspace", scope_id="repo-a")
 
-    results = mem.search("Searchable command", workspace="repo-a", include_global=False, limit=10)
+    results = mem.search("Searchable command", scope="workspace", scope_id="repo-a", include_global=False, limit=10)
 
     assert [row.record.scope for row in results] == ["workspace"]
-    assert [row.record.content for row in results] == ["Searchable command: workspace default"]
+    assert [row.record.content for row in results] == ["Searchable command: scope_id default"]
 
 
 def test_tenant_boundary_enforced(tmp_path):
     mem = DeepMemory(tmp_path / "memory.db")
-    mem.add("Tenant boundary fact: acme workspace settings", scope="tenant", tenant="acme")
-    mem.add("Tenant boundary fact: other workspace settings", scope="tenant", tenant="other")
+    mem.add("Tenant boundary fact: acme scope_id settings", scope="workspace", scope_id="acme")
+    mem.add("Tenant boundary fact: other scope_id settings", scope="workspace", scope_id="other")
 
-    acme_results = mem.search("Tenant boundary fact", tenant="acme", include_global=False, limit=10)
+    acme_results = mem.search("Tenant boundary fact", scope="workspace", scope_id="acme", include_global=False, limit=10)
     default_results = mem.search("Tenant boundary fact", include_global=False, limit=10)
 
-    assert [row.record.tenant for row in acme_results] == ["acme"]
-    assert [row.record.content for row in acme_results] == ["Tenant boundary fact: acme workspace settings"]
+    assert [row.record.scope_id for row in acme_results] == ["acme"]
+    assert [row.record.content for row in acme_results] == ["Tenant boundary fact: acme scope_id settings"]
     assert default_results == []
 
 
 def test_user_id_boundary_enforced(tmp_path):
     mem = DeepMemory(tmp_path / "memory.db")
-    mem.add("User boundary fact: ben likes concise answers", scope="user", user_id="ben")
-    mem.add("User boundary fact: ada likes detailed answers", scope="user", user_id="ada")
+    mem.add("User boundary fact: ben likes concise answers", scope="user", scope_id="ben")
+    mem.add("User boundary fact: ada likes detailed answers", scope="user", scope_id="ada")
 
-    ben_results = mem.search("User boundary fact", user_id="ben", include_global=False, limit=10)
+    ben_results = mem.search("User boundary fact", scope="user", scope_id="ben", include_global=False, limit=10)
     default_results = mem.search("User boundary fact", include_global=False, limit=10)
 
-    assert [row.record.user_id for row in ben_results] == ["ben"]
+    assert [row.record.scope_id for row in ben_results] == ["ben"]
     assert [row.record.content for row in ben_results] == ["User boundary fact: ben likes concise answers"]
     assert default_results == []
 
@@ -189,11 +199,11 @@ def test_legacy_global_records_remain_visible_after_migration(tmp_path):
     results = mem.search("Legacy memory", limit=10)
 
     assert record.scope == "global"
-    assert record.workspace is None
+    assert record.scope_id is None
     assert results[0].record.id == "legacy-1"
 
 
-def test_basename_collision_two_different_paths_share_workspace(tmp_path):
+def test_basename_collision_two_different_paths_share_scope_id(tmp_path):
     left = tmp_path / "a" / "test"
     right = tmp_path / "b" / "test"
     left.mkdir(parents=True)
@@ -203,19 +213,89 @@ def test_basename_collision_two_different_paths_share_workspace(tmp_path):
     assert _infer_workspace_from_cwd(right) == "test"
 
 
-def test_scope_demote_cli_moves_global_memory_to_workspace(tmp_path):
+def test_scope_demote_cli_moves_global_memory_to_scope_id(tmp_path):
     db = tmp_path / "memory.db"
     mem = DeepMemory(db)
-    record = mem.add("Workspace fact: demote me back", scope="workspace", workspace="repo-a")
+    record = mem.add("Workspace fact: demote me back", scope="workspace", scope_id="repo-a")
     promoted = mem.promote_scope(record.id, to="global")
     assert promoted.scope == "global"
 
     result = CliRunner().invoke(
         app,
-        ["scope", "demote", str(db), record.id, "--to", "workspace", "--workspace", "repo-a"],
+        ["scope", "demote", str(db), record.id, "--to", "workspace", "--scope-id", "repo-a"],
     )
 
     assert result.exit_code == 0, result.output
     demoted = DeepMemory(db).get(record.id)
     assert demoted.scope == "workspace"
-    assert demoted.workspace == "repo-a"
+    assert demoted.scope_id == "repo-a"
+
+
+def test_cli_add_and_search_support_project_scope_id_without_namespace_leakage(tmp_path):
+    db = tmp_path / "memory.db"
+    runner = CliRunner()
+
+    add_project = runner.invoke(
+        app,
+        [
+            "add",
+            str(db),
+            "Project fact: CLI exposes scope_id",
+            "--scope",
+            "project",
+            "--scope-id",
+            "deep-memory",
+        ],
+    )
+    add_other = runner.invoke(
+        app,
+        [
+            "add",
+            str(db),
+            "Project fact: other namespace",
+            "--scope",
+            "project",
+            "--scope-id",
+            "other-project",
+        ],
+    )
+    search_project = runner.invoke(
+        app,
+        [
+            "search",
+            str(db),
+            "Project fact",
+            "--scope",
+            "project",
+            "--scope-id",
+            "deep-memory",
+            "--no-include-global",
+            "--limit",
+            "10",
+        ],
+    )
+
+    assert add_project.exit_code == 0, add_project.output
+    assert add_other.exit_code == 0, add_other.output
+    assert '"scope": "project"' in add_project.output
+    assert '"scope_id": "deep-memory"' in add_project.output
+    assert search_project.exit_code == 0, search_project.output
+    assert "deep-memory" in search_project.output
+    assert "exposes scope_id" in search_project.output
+    assert "other-project" not in search_project.output
+    assert "Project fact: other namespace" not in search_project.output
+
+
+def test_search_scope_id_without_scope_explains_fixed_scope_model(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+
+    try:
+        mem.search("anything", scope_id="deep-memory")
+    except ValueError as exc:
+        message = str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("scope_id without scope should be rejected")
+
+    assert "scope is a fixed layer" in message
+    assert "scope_id" in message
+    assert "custom names" in message

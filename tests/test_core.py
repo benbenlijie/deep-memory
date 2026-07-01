@@ -552,14 +552,14 @@ def test_schema_migration_adds_embedding_fields_idempotently_to_legacy_database(
     assert record.embedding_version is None
 
 
-def test_add_without_scope_defaults_to_workspace_and_infers_cwd(tmp_path, monkeypatch):
+def test_add_without_scope_defaults_to_workspace_scope_id_and_infers_cwd(tmp_path, monkeypatch):
     mem = DeepMemory(tmp_path / "memory.db")
     monkeypatch.chdir(tmp_path)
 
     record = mem.add("Project convention: isolate memory by workspace")
 
     assert record.scope == "workspace"
-    assert record.workspace == tmp_path.name
+    assert record.scope_id == tmp_path.name
 
 
 def test_search_defaults_to_current_workspace_and_keeps_global_visible(tmp_path, monkeypatch):
@@ -574,20 +574,37 @@ def test_search_defaults_to_current_workspace_and_keeps_global_visible(tmp_path,
     assert any(row.record.scope == "global" for row in results)
 
 
-def test_search_can_exclude_global_and_search_cross_workspace_explicitly(tmp_path, monkeypatch):
+def test_search_can_exclude_global_and_search_cross_scope_explicitly(tmp_path, monkeypatch):
     mem = DeepMemory(tmp_path / "memory.db")
     monkeypatch.chdir(tmp_path)
     mem.add("Workspace current fact", scope="workspace")
-    mem.add("Workspace A fact", scope="workspace", workspace="repo-a")
-    mem.add("Workspace B fact", scope="workspace", workspace="repo-b")
+    mem.add("Workspace A fact", scope="workspace", scope_id="repo-a")
+    mem.add("Workspace B fact", scope="workspace", scope_id="repo-b")
     mem.add("Global fact", scope="global")
 
     local_only = mem.search("fact", include_global=False, limit=10)
-    cross = mem.search("fact", include_global=False, cross_workspace=True, limit=10)
+    cross = mem.search("fact", include_global=False, cross_scope=True, limit=10)
 
     assert all(row.record.scope != "global" for row in local_only)
-    assert {row.record.workspace for row in local_only} == {tmp_path.name}
-    assert {row.record.workspace for row in cross} == {tmp_path.name, "repo-a", "repo-b"}
+    assert {row.record.scope_id for row in local_only} == {tmp_path.name}
+    assert {row.record.scope_id for row in cross} == {tmp_path.name, "repo-a", "repo-b"}
+
+
+def test_project_scope_id_isolation_and_global_inclusion(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    mem.add("Shared launch checklist", scope="global")
+    mem.add("Project runbook: use uv run pytest", scope="project", scope_id="deep-memory")
+    mem.add("Project runbook: use npm test", scope="project", scope_id="other-project")
+
+    scoped = mem.search("Project runbook Shared", scope="project", scope_id="deep-memory", limit=10)
+    isolated = mem.search("Project runbook Shared", scope="project", scope_id="deep-memory", include_global=False, limit=10)
+    cross = mem.search("Project runbook", include_global=False, cross_scope=True, limit=10)
+
+    assert {row.record.scope_id for row in scoped if row.record.scope == "project"} == {"deep-memory"}
+    assert any(row.record.scope == "global" for row in scoped)
+    assert {row.record.scope for row in isolated} == {"project"}
+    assert {row.record.scope_id for row in isolated} == {"deep-memory"}
+    assert {row.record.scope_id for row in cross} == {"deep-memory", "other-project"}
 
 
 def test_promote_scope_moves_workspace_memory_to_global(tmp_path, monkeypatch):
@@ -598,7 +615,7 @@ def test_promote_scope_moves_workspace_memory_to_global(tmp_path, monkeypatch):
     promoted = mem.promote_scope(record.id, to="global")
 
     assert promoted.scope == "global"
-    assert promoted.workspace is None
+    assert promoted.scope_id is None
 
 
 def test_scope_distribution_reports_scope_counts(tmp_path, monkeypatch):
