@@ -5,7 +5,7 @@
 
   <p>
     A shared, inspectable memory layer for Claude Code, Codex, OpenCode, and Hermes.
-    Store explicit durable facts and procedures in a machine-local SQLite database, with scoped records for users, workspaces, projects, and agent workflows —
+    Store explicit durable facts and procedures in a machine-local SQLite database, with scoped records for global, user, tenant, workspace, and project namespaces —
     not hidden cloud state, not raw transcript scraping, not opaque global memory.
   </p>
 
@@ -58,7 +58,7 @@ Most agent memory fails in one of two ways: it forgets everything useful between
 
 - **Cross-agent continuity.** One shared memory layer for Claude Code, Codex, OpenCode, and Hermes, so useful conventions do not have to be re-taught from scratch.
 - **Inspectable by default.** Read, edit, export, soft-delete, hard-delete, and audit records through the CLI, Python SDK, or local WebUI.
-- **Machine-local governance.** One local SQLite store can be shared across agents, while explicit scopes keep records bounded to users, workspaces, projects, workflows, or tenants.
+- **Machine-local governance.** One local SQLite store can be shared across agents, while `scope` and `scope_id` keep records bounded to global, user, tenant, workspace, or project namespaces.
 - **Chinese retrieval as a first-class path.** FTS5 plus local Chinese/English token fallback, optional `jieba`, and checked-in Chinese retrieval fixtures make the claim measurable instead of decorative.
 - **Memory to skill candidate export.** Procedural memory can be exported as reviewable skill candidates, so successful workflows become auditable artifacts instead of silently turning into behavior rules.
 - **Regression-tested retrieval.** Checked-in evals cover Chinese retrieval, bilingual memory/no-memory tasks, and the core CLI/SDK behavior.
@@ -69,7 +69,7 @@ That control surface matters because a useful memory layer needs more than stora
 
 - **Inspectability.** Humans should be able to see what an agent will carry forward.
 - **Deletion.** Wrong, stale, private, or unsafe records must be removable, not merely hidden by ranking.
-- **Scoping.** Machine-level memory should stay relevant through explicit user, workspace, project, workflow, and tenant scopes.
+- **Scoping.** Machine-level memory should stay relevant through fixed scopes plus explicit namespace IDs.
 - **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
 
 ## Quickstart
@@ -110,18 +110,22 @@ uv run deep-memory init ~/.deep-memory/deep-memory.db
 uv run deep-memory add ~/.deep-memory/deep-memory.db \
   "User wants agents to use deep-memory as shared persistent memory" \
   --kind semantic \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8
-uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory"
+uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory" \
+  --scope project \
+  --scope-id deep-memory
 ```
 
 Expected CLI shape:
 
 ```text
-$ uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory"
-score=...  kind=semantic  scope=global  content=User wants agents to use deep-memory as shared persistent memory
+$ uv run deep-memory search ~/.deep-memory/deep-memory.db "shared persistent memory" --scope project --scope-id deep-memory
+score=...  scope=project  scope_id=deep-memory  kind=semantic  content=User wants agents to use deep-memory as shared persistent memory
 ```
 
-This is the core loop: install one machine-local memory store, let agents share it, and keep records bounded with explicit scopes.
+This is the core loop: install one machine-local memory store, let agents share it, and keep records bounded with a fixed `scope` plus a custom `scope_id`.
 
 If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, wrappers, safe memory-write rules, and how to ask the user before starring the repo.
 
@@ -226,12 +230,16 @@ Until MCP is wired in, use a wrapper. Search before the task, write only verifie
 
 ```bash
 MEMORY_DB=~/.deep-memory/deep-memory.db
-uv run deep-memory search "$MEMORY_DB" "this task's relevant conventions"
+uv run deep-memory search "$MEMORY_DB" "this task's relevant conventions" \
+  --scope project \
+  --scope-id deep-memory
 # pass the result into the agent as a short "relevant memory" block
 # ...run the agent...
 uv run deep-memory add "$MEMORY_DB" \
   "Workflow: for this repo, run uv run pytest -q and uv run ruff check . before review" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8 \
   --source codex:manual
 ```
@@ -257,7 +265,7 @@ For the full adapter surface — integration points, read/write paths, permissio
 | `project` | Repo-specific memory | repository conventions, local architecture facts, review checklists | No |
 | `tenant` | Team / environment isolation | org lane separation, staging vs production boundaries, multi-tenant execution state | Depends on tenant design |
 
-The database is shared; scope keeps retrieval relevant. Start with the narrowest scope that preserves the behavior you want, then widen only when the memory should truly travel across projects or agents.
+The database is shared; `scope` is the fixed governance layer (`global`, `user`, `tenant`, `workspace`, or `project`) and `scope_id` is the custom namespace inside that layer, such as `deep-memory`, `repo-a`, or `ben`. Start with the narrowest scope that preserves the behavior you want, then widen only when the memory should truly travel across projects or agents.
 
 ## Inspect memory
 
@@ -285,10 +293,27 @@ from pathlib import Path
 from deep_memory import DeepMemory
 
 mem = DeepMemory(Path("~/.deep-memory/deep-memory.db").expanduser())
-mem.add("User prefers concise answers with English technical terms", kind="semantic", importance=0.9, scope="user")
-mem.add("Project convention: use uv for tests", kind="procedural", importance=0.8, scope="project")
+mem.add(
+    "User prefers concise answers with English technical terms",
+    kind="semantic",
+    importance=0.9,
+    scope="user",
+    scope_id="ben",
+)
+mem.add(
+    "Project convention: use uv for tests",
+    kind="procedural",
+    importance=0.8,
+    scope="project",
+    scope_id="deep-memory",
+)
 
-for result in mem.search("how should this repo be tested?", limit=3):
+for result in mem.search(
+    "how should this repo be tested?",
+    scope="project",
+    scope_id="deep-memory",
+    limit=3,
+):
     print(result.score, result.record.kind, result.record.content)
 ```
 
@@ -296,7 +321,7 @@ for result in mem.search("how should this repo be tested?", limit=3):
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Local persistence | Implemented | Machine-local SQLite DB controlled by the user, with explicit scopes for users, workspaces, projects, workflows, and tenants. |
+| Local persistence | Implemented | Machine-local SQLite DB controlled by the user, with fixed global/user/tenant/workspace/project scopes and custom scope IDs. |
 | Search | Implemented | FTS5 plus local Chinese/English token fallback. |
 | Optional Chinese tokenizer | Implemented | `jieba` backend via `uv sync --extra retrieval`. |
 | Metadata | Implemented | `kind`, `importance`, `confidence`, `source`, timestamps, conflict states, scope, and decay. |
@@ -341,7 +366,7 @@ Persistent memory changes future behavior. Keep the default narrow:
 
 - store explicit durable facts, not raw transcripts;
 - use machine-local SQLite by default;
-- keep scope explicit so global memories are intentional and project/workspace memories stay bounded;
+- keep `scope` as the fixed layer and `scope_id` as the custom namespace so global memories are intentional and project/workspace memories stay bounded;
 - retrieve a small relevant context block;
 - retrieval telemetry is local-only and can be disabled with `DEEP_MEMORY_TELEMETRY=off` — see [`docs/SAFETY_AND_PRIVACY.md`](docs/SAFETY_AND_PRIVACY.md);
 - never store secrets, private keys, auth cookies, raw credentials, raw private transcripts, or temporary task status;

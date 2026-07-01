@@ -128,9 +128,7 @@ class MemoryRecord:
     supersedes_id: str | None = None
     superseded_by_id: str | None = None
     scope: MemoryScope = "global"
-    workspace: str | None = None
-    tenant: str | None = None
-    user_id: str | None = None
+    scope_id: str | None = None
     agent: str | None = None
     idempotency_key: str | None = None
     embedding_model: str | None = None
@@ -292,9 +290,7 @@ class DeepMemory:
                 superseded_by_id TEXT,
                 scope TEXT NOT NULL DEFAULT 'global'
                     CHECK (scope IN ('global','user','tenant','workspace','project')),
-                workspace TEXT,
-                tenant TEXT,
-                user_id TEXT,
+                scope_id TEXT,
                 agent TEXT,
                 idempotency_key TEXT,
                 embedding_model TEXT,
@@ -365,8 +361,7 @@ class DeepMemory:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(memory_id) REFERENCES memories(id) ON DELETE CASCADE
             );
-            CREATE INDEX IF NOT EXISTS memories_scope_workspace_idx ON memories(scope, workspace);
-            CREATE INDEX IF NOT EXISTS memories_tenant_user_idx ON memories(tenant, user_id);
+            CREATE INDEX IF NOT EXISTS memories_scope_scope_id_idx ON memories(scope, scope_id);
             CREATE INDEX IF NOT EXISTS memories_agent_idx ON memories(agent);
             CREATE INDEX IF NOT EXISTS retrieval_log_created_at_idx ON retrieval_log(created_at);
             CREATE INDEX IF NOT EXISTS memory_feedback_memory_id_idx ON memory_feedback(memory_id);
@@ -386,9 +381,7 @@ class DeepMemory:
             "supersedes_id": "ALTER TABLE memories ADD COLUMN supersedes_id TEXT",
             "superseded_by_id": "ALTER TABLE memories ADD COLUMN superseded_by_id TEXT",
             "scope": "ALTER TABLE memories ADD COLUMN scope TEXT NOT NULL DEFAULT 'global'",
-            "workspace": "ALTER TABLE memories ADD COLUMN workspace TEXT",
-            "tenant": "ALTER TABLE memories ADD COLUMN tenant TEXT",
-            "user_id": "ALTER TABLE memories ADD COLUMN user_id TEXT",
+            "scope_id": "ALTER TABLE memories ADD COLUMN scope_id TEXT",
             "agent": "ALTER TABLE memories ADD COLUMN agent TEXT",
             "idempotency_key": "ALTER TABLE memories ADD COLUMN idempotency_key TEXT",
             "learned_at": "ALTER TABLE memories ADD COLUMN learned_at TEXT",
@@ -403,6 +396,15 @@ class DeepMemory:
         for column, statement in migrations.items():
             if column not in columns:
                 self.conn.execute(statement)
+        refreshed_columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(memories)")}
+        if "scope_id" in refreshed_columns:
+            if "workspace" in refreshed_columns:
+                self.conn.execute("UPDATE memories SET scope_id = workspace WHERE scope_id IS NULL AND scope IN ('workspace', 'project') AND workspace IS NOT NULL")
+            if "tenant" in refreshed_columns:
+                self.conn.execute("UPDATE memories SET scope_id = tenant WHERE scope_id IS NULL AND scope = 'tenant' AND tenant IS NOT NULL")
+            if "user_id" in refreshed_columns:
+                self.conn.execute("UPDATE memories SET scope_id = user_id WHERE scope_id IS NULL AND scope = 'user' AND user_id IS NOT NULL")
+            self.conn.execute("UPDATE memories SET scope_id = NULL WHERE scope = 'global'")
         self.conn.execute("UPDATE memories SET learned_at = created_at WHERE learned_at IS NULL")
         self.conn.execute("UPDATE memories SET event_time = created_at WHERE event_time IS NULL")
         self.conn.execute("UPDATE memories SET reputation = 1.0 WHERE reputation IS NULL")
@@ -437,9 +439,7 @@ class DeepMemory:
             "supersedes_id",
             "superseded_by_id",
             "scope",
-            "workspace",
-            "tenant",
-            "user_id",
+            "scope_id",
             "agent",
             "idempotency_key",
             "embedding_model",
@@ -479,9 +479,7 @@ class DeepMemory:
                 superseded_by_id TEXT,
                 scope TEXT NOT NULL DEFAULT 'global'
                     CHECK (scope IN ('global','user','tenant','workspace','project')),
-                workspace TEXT,
-                tenant TEXT,
-                user_id TEXT,
+                scope_id TEXT,
                 agent TEXT,
                 idempotency_key TEXT,
                 embedding_model TEXT,
@@ -619,9 +617,7 @@ class DeepMemory:
         event_time: str | None = None,
         valid_until: str | None = None,
         scope: MemoryScope = "workspace",
-        workspace: str | None = None,
-        tenant: str | None = None,
-        user_id: str | None = None,
+        scope_id: str | None = None,
         agent: str | None = None,
         idempotency_key: str | None = None,
         duplicate_policy: DuplicatePolicy = "create",
@@ -631,12 +627,9 @@ class DeepMemory:
         ensure_memory_content_allowed(content)
         importance = _clamp01(importance)
         confidence = _clamp01(confidence)
-        if scope not in {"global", "user", "tenant", "workspace", "project"}:
-            raise ValueError(f"unsupported memory scope: {scope}")
         if duplicate_policy not in {"create", "skip", "update"}:
             raise ValueError(f"unsupported duplicate policy: {duplicate_policy}")
-        if scope in {"workspace", "project"} and workspace is None:
-            workspace = _infer_workspace_from_cwd()
+        scope, scope_id = _normalize_scope(scope=scope, scope_id=scope_id, infer_workspace=True)
         normalized_event_time = _validate_iso_datetime(event_time, "event_time") or utcnow()
         normalized_valid_until = _validate_iso_datetime(valid_until, "valid_until")
         normalized_content = content.strip()
@@ -659,8 +652,8 @@ class DeepMemory:
                     """
                     UPDATE memories
                     SET content = ?, kind = ?, importance = ?, confidence = ?, source = ?,
-                        updated_at = ?, expires_at = ?, event_time = ?, valid_until = ?, scope = ?, workspace = ?, tenant = ?,
-                        user_id = ?, agent = ?, conflict_status = ?, supersedes_id = ?, baseline_trust = ?, reputation = ?, reputation_updated_at = ?
+                        updated_at = ?, expires_at = ?, event_time = ?, valid_until = ?, scope = ?, scope_id = ?,
+                        agent = ?, conflict_status = ?, supersedes_id = ?, baseline_trust = ?, reputation = ?, reputation_updated_at = ?
                     WHERE idempotency_key = ?
                     """,
                     (
@@ -674,9 +667,7 @@ class DeepMemory:
                         normalized_event_time if event_time is not None else existing["event_time"] or existing["created_at"],
                         normalized_valid_until,
                         scope,
-                        workspace,
-                        tenant,
-                        user_id,
+                        scope_id,
                         agent,
                         initial_status,
                         supersedes_id,
@@ -697,10 +688,10 @@ class DeepMemory:
             """
             INSERT INTO memories(
                 id, content, kind, importance, confidence, source, created_at, updated_at, learned_at,
-                event_time, valid_until, expires_at, conflict_status, supersedes_id, scope, workspace, tenant, user_id, agent, idempotency_key,
+                event_time, valid_until, expires_at, conflict_status, supersedes_id, scope, scope_id, agent, idempotency_key,
                 baseline_trust, reputation, reputation_updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 record_id,
@@ -718,9 +709,7 @@ class DeepMemory:
                 initial_status,
                 supersedes_id,
                 scope,
-                workspace,
-                tenant,
-                user_id,
+                scope_id,
                 agent,
                 idempotency_key,
                 baseline_trust,
@@ -883,12 +872,11 @@ class DeepMemory:
         limit: int,
         kind: MemoryKind | None,
         as_of: str | datetime | None,
-        workspace: str | None,
-        tenant: str | None,
-        user_id: str | None,
+        scope: MemoryScope | None,
+        scope_id: str | None,
         agent: str | None,
         include_global: bool,
-        cross_workspace: bool,
+        cross_scope: bool,
         backend: RetrievalBackend,
     ) -> list[sqlite3.Row]:
         query_tokens = _query_tokens(query, backend=backend)
@@ -902,12 +890,11 @@ class DeepMemory:
         params.extend(temporal_params)
         scope_sql, scope_params = _scope_filter_sql(
             "m",
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope=scope,
+            scope_id=scope_id,
             agent=agent,
             include_global=include_global,
-            cross_workspace=cross_workspace,
+            cross_scope=cross_scope,
         )
         params.extend(scope_params)
         params.append(limit)
@@ -936,12 +923,11 @@ class DeepMemory:
         like_params.extend(like_temporal_params)
         like_scope_sql, like_scope_params = _scope_filter_sql(
             "",
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope=scope,
+            scope_id=scope_id,
             agent=agent,
             include_global=include_global,
-            cross_workspace=cross_workspace,
+            cross_scope=cross_scope,
         )
         like_where = (
             f"({like_where}) AND conflict_status NOT IN ('candidate', 'deprecated', 'superseded', 'archived')"
@@ -961,12 +947,11 @@ class DeepMemory:
         limit: int,
         kind: MemoryKind | None,
         as_of: str | datetime | None,
-        workspace: str | None,
-        tenant: str | None,
-        user_id: str | None,
+        scope: MemoryScope | None,
+        scope_id: str | None,
         agent: str | None,
         include_global: bool,
-        cross_workspace: bool,
+        cross_scope: bool,
         backend: RetrievalBackend,
     ) -> list[RetrievalCandidate]:
         rows = self._fts_candidate_rows(
@@ -974,12 +959,11 @@ class DeepMemory:
             limit=limit,
             kind=kind,
             as_of=as_of,
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope=scope,
+            scope_id=scope_id,
             agent=agent,
             include_global=include_global,
-            cross_workspace=cross_workspace,
+            cross_scope=cross_scope,
             backend=backend,
         )
         return [
@@ -994,12 +978,11 @@ class DeepMemory:
         limit: int,
         kind: MemoryKind | None,
         as_of: str | datetime | None,
-        workspace: str | None,
-        tenant: str | None,
-        user_id: str | None,
+        scope: MemoryScope | None,
+        scope_id: str | None,
         agent: str | None,
         include_global: bool,
-        cross_workspace: bool,
+        cross_scope: bool,
         embedding_version: int | None,
     ) -> list[RetrievalCandidate]:
         backend = self._resolve_embedding_backend()
@@ -1009,12 +992,11 @@ class DeepMemory:
         temporal_sql, temporal_params = _temporal_filter_sql("m", as_of)
         scope_sql, scope_params = _scope_filter_sql(
             "m",
-            workspace=workspace,
-            tenant=tenant,
-            user_id=user_id,
+            scope=scope,
+            scope_id=scope_id,
             agent=agent,
             include_global=include_global,
-            cross_workspace=cross_workspace,
+            cross_scope=cross_scope,
         )
         params: list[object] = []
         kind_sql = ""
@@ -1033,12 +1015,11 @@ class DeepMemory:
             tuple(temporal_params),
             tuple(scope_params),
             as_of,
-            workspace,
-            tenant,
-            user_id,
+            scope,
+            scope_id,
             agent,
             include_global,
-            cross_workspace,
+            cross_scope,
         )
         cached = self._vector_search_cache.get(cache_key)
         if cached is None:
@@ -1155,12 +1136,11 @@ class DeepMemory:
         now: datetime | None = None,
         as_of: str | datetime | None = None,
         backend: RetrievalBackend = "local",
-        workspace: str | None = None,
-        tenant: str | None = None,
-        user_id: str | None = None,
+        scope: MemoryScope | None = None,
+        scope_id: str | None = None,
         agent: str | None = None,
         include_global: bool = True,
-        cross_workspace: bool = False,
+        cross_scope: bool = False,
         caller: str = "python",
         high_trust_threshold: float = 0.7,
         allow_fallback: bool = True,
@@ -1170,8 +1150,7 @@ class DeepMemory:
         query = query.strip()
         if not query:
             return []
-        if not cross_workspace and workspace is None:
-            workspace = _infer_workspace_from_cwd()
+        scope, scope_id = _normalize_search_scope(scope=scope, scope_id=scope_id, cross_scope=cross_scope)
         candidate_limit = max(limit * 10, 50)
         vector_available = self._resolve_embedding_backend() is not None
         if retrieval_mode == "auto":
@@ -1191,12 +1170,11 @@ class DeepMemory:
                 limit=candidate_limit,
                 kind=kind,
                 as_of=as_of,
-                workspace=workspace,
-                tenant=tenant,
-                user_id=user_id,
+                scope=scope,
+                scope_id=scope_id,
                 agent=agent,
                 include_global=include_global,
-                cross_workspace=cross_workspace,
+                cross_scope=cross_scope,
                 backend=backend,
             )
         if effective_mode in {"vector", "hybrid"}:
@@ -1205,12 +1183,11 @@ class DeepMemory:
                 limit=candidate_limit,
                 kind=kind,
                 as_of=as_of,
-                workspace=workspace,
-                tenant=tenant,
-                user_id=user_id,
+                scope=scope,
+                scope_id=scope_id,
                 agent=agent,
                 include_global=include_global,
-                cross_workspace=cross_workspace,
+                cross_scope=cross_scope,
                 embedding_version=embedding_version,
             )
 
@@ -1259,12 +1236,11 @@ class DeepMemory:
             supplement_params.extend(supplement_temporal_params)
             supplement_scope_sql, supplement_scope_params = _scope_filter_sql(
                 "",
-                workspace=workspace,
-                tenant=tenant,
-                user_id=user_id,
+                scope=scope,
+                scope_id=scope_id,
                 agent=agent,
                 include_global=include_global,
-                cross_workspace=cross_workspace,
+                cross_scope=cross_scope,
             )
             supplement_params.extend(supplement_scope_params)
             supplement_rows = self.conn.execute(
@@ -1988,53 +1964,48 @@ class DeepMemory:
         record_id: str,
         *,
         to: Literal["global", "tenant", "user", "workspace", "project"],
-        workspace: str | None = None,
-        tenant: str | None = None,
-        user_id: str | None = None,
+        scope_id: str | None = None,
     ) -> MemoryRecord:
         """Promote or move one memory into an explicit retrieval scope."""
 
-        if to not in {"global", "tenant", "user", "workspace", "project"}:
-            raise ValueError("scope promotion target must be global, tenant, user, workspace, or project")
-        current = self.get(record_id)
-        next_workspace = None
-        next_tenant = None
-        next_user_id = None
-        if to in {"workspace", "project"}:
-            next_workspace = workspace or current.workspace or _infer_workspace_from_cwd()
-        elif to == "tenant":
-            next_tenant = tenant or current.tenant
-        elif to == "user":
-            next_user_id = user_id or current.user_id
+        if to == "global":
+            to, next_scope_id = _normalize_scope(scope=to, scope_id=scope_id, infer_workspace=False)
+        else:
+            current = self.get(record_id)
+            to, next_scope_id = _normalize_scope(
+                scope=to,
+                scope_id=scope_id or current.scope_id,
+                infer_workspace=to == "workspace",
+            )
+            record_id = current.id
         now = utcnow()
         self.conn.execute(
             """
             UPDATE memories
-            SET scope = ?, workspace = ?, tenant = ?, user_id = ?, updated_at = ?
+            SET scope = ?, scope_id = ?, updated_at = ?
             WHERE id = ?
             """,
-            (to, next_workspace, next_tenant, next_user_id, now, current.id),
+            (to, next_scope_id, now, record_id),
         )
+        self._invalidate_vector_search_cache()
         self.conn.commit()
-        return self.get(current.id)
+        return self.get(record_id)
 
     def scope_distribution(self) -> list[dict[str, object]]:
-        """Return counts grouped by scope/workspace/tenant/user for audit and migration."""
+        """Return counts grouped by scope/scope_id for audit and migration."""
 
         rows = self.conn.execute(
             """
-            SELECT scope, workspace, tenant, user_id, COUNT(*) AS count
+            SELECT scope, scope_id, COUNT(*) AS count
             FROM memories
-            GROUP BY scope, workspace, tenant, user_id
-            ORDER BY scope, workspace, tenant, user_id
+            GROUP BY scope, scope_id
+            ORDER BY scope, scope_id
             """
         ).fetchall()
         return [
             {
                 "scope": row["scope"],
-                "workspace": row["workspace"],
-                "tenant": row["tenant"],
-                "user_id": row["user_id"],
+                "scope_id": row["scope_id"],
                 "count": row["count"],
             }
             for row in rows
@@ -2369,9 +2340,7 @@ def _row_to_record(row: sqlite3.Row) -> MemoryRecord:
         supersedes_id=row["supersedes_id"],
         superseded_by_id=row["superseded_by_id"],
         scope=row["scope"],
-        workspace=row["workspace"],
-        tenant=row["tenant"],
-        user_id=row["user_id"],
+        scope_id=row["scope_id"],
         agent=row["agent"],
         idempotency_key=row["idempotency_key"],
         embedding_model=row["embedding_model"],
@@ -2540,16 +2509,16 @@ def build_idempotency_key(
     *,
     kind: MemoryKind = "semantic",
     source: str | None = None,
-    workspace: str | None = None,
-    tenant: str | None = None,
-    user_id: str | None = None,
+    scope: MemoryScope = "global",
+    scope_id: str | None = None,
     agent: str | None = None,
 ) -> str:
-    """Return a stable key for one adapter-emitted fact in one boundary."""
+    """Return a stable key for one adapter-emitted fact in one namespace."""
 
     normalized_content = re.sub(r"\s+", " ", content.strip())
-    parts = [kind, normalized_content, source or "", workspace or "", tenant or "", user_id or "", agent or ""]
-    return "v1:" + sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
+    scope, scope_id = _normalize_scope(scope=scope, scope_id=scope_id, infer_workspace=False)
+    parts = [kind, normalized_content, source or "", scope, scope_id or "", agent or ""]
+    return "v2:" + sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
 
 
 
@@ -2585,32 +2554,57 @@ def _temporal_filter_sql(alias: str, as_of: str | datetime | None) -> tuple[str,
     value = _normalize_temporal_value(as_of)
     return f"AND {prefix}event_time <= ? AND ({prefix}valid_until IS NULL OR {prefix}valid_until > ?)", [value, value]
 
+def _normalize_scope(*, scope: MemoryScope, scope_id: str | None, infer_workspace: bool) -> tuple[MemoryScope, str | None]:
+    if scope not in {"global", "user", "tenant", "workspace", "project"}:
+        raise ValueError(f"unsupported memory scope: {scope}; scope is a fixed layer, use scope_id for custom names such as project names")
+    normalized_scope_id = scope_id.strip() if isinstance(scope_id, str) else scope_id
+    if normalized_scope_id == "":
+        normalized_scope_id = None
+    if scope == "global":
+        if normalized_scope_id is not None:
+            raise ValueError("global scope must not set scope_id; scope is the fixed layer, use scope_id only for user/tenant/workspace/project names")
+        return scope, None
+    if normalized_scope_id is None and infer_workspace and scope == "workspace":
+        normalized_scope_id = _infer_workspace_from_cwd()
+    if normalized_scope_id is None:
+        raise ValueError(f"scope_id is required for scope={scope!r}; scope is the fixed layer, use scope_id for custom names such as project names")
+    return scope, normalized_scope_id
+
+
+def _normalize_search_scope(*, scope: MemoryScope | None, scope_id: str | None, cross_scope: bool) -> tuple[MemoryScope | None, str | None]:
+    if cross_scope:
+        return None, None
+    if scope is None and scope_id is None:
+        return "workspace", _infer_workspace_from_cwd()
+    if scope is None:
+        raise ValueError("scope is required when scope_id is provided; scope is a fixed layer, use scope_id for custom names such as project names")
+    return _normalize_scope(scope=scope, scope_id=scope_id, infer_workspace=scope == "workspace")
+
+
 def _scope_filter_sql(
     alias: str,
     *,
-    workspace: str | None,
-    tenant: str | None,
-    user_id: str | None,
+    scope: MemoryScope | None,
+    scope_id: str | None,
     agent: str | None,
     include_global: bool,
-    cross_workspace: bool,
+    cross_scope: bool,
 ) -> tuple[str, list[object]]:
     prefix = f"{alias}." if alias else ""
     params: list[object] = []
     visible: list[str] = []
-    if include_global:
+    if cross_scope:
+        if include_global:
+            visible.append(f"{prefix}scope = 'global'")
+        visible.append(f"{prefix}scope IN ('user', 'tenant', 'workspace', 'project')")
+    elif scope == "global":
         visible.append(f"{prefix}scope = 'global'")
-    if cross_workspace:
-        visible.append(f"{prefix}scope IN ('workspace', 'project')")
-    elif workspace is not None:
-        visible.append(f"({prefix}scope IN ('workspace', 'project') AND {prefix}workspace = ?)")
-        params.append(workspace)
-    if tenant is not None:
-        visible.append(f"({prefix}scope = 'tenant' AND {prefix}tenant = ?)")
-        params.append(tenant)
-    if user_id is not None:
-        visible.append(f"({prefix}scope = 'user' AND {prefix}user_id = ?)")
-        params.append(user_id)
+    else:
+        if include_global:
+            visible.append(f"{prefix}scope = 'global'")
+        if scope is not None and scope_id is not None:
+            visible.append(f"({prefix}scope = ? AND {prefix}scope_id = ?)")
+            params.extend([scope, scope_id])
     if not visible:
         return "AND 0", []
     clauses = ["(" + " OR ".join(visible) + ")"]

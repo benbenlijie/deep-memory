@@ -79,13 +79,14 @@ def test_hermes_import_cli_imports_facts_and_prints_count(tmp_path):
     assert DeepMemory(db).stats()["semantic"] == 1
 
 
-def test_hermes_import_uses_workspace_scope_and_dedupes_reimports(tmp_path):
+def test_hermes_import_uses_scope_id_and_dedupes_reimports(tmp_path):
     session = tmp_path / "session.jsonl"
     session.write_text(
         json.dumps(
             {
                 "session_id": "s_scope",
-                "workspace": "/repo/a",
+                "scope": "workspace",
+                "scope_id": "/repo/a",
                 "agent": "hermes",
                 "facts": [
                     {
@@ -106,11 +107,11 @@ def test_hermes_import_uses_workspace_scope_and_dedupes_reimports(tmp_path):
     mem = DeepMemory(db)
 
     try:
-        results = mem.search("独立目录", workspace="/repo/a", limit=3)
+        results = mem.search("独立目录", scope="workspace", scope_id="/repo/a", limit=3)
         assert len(first) == 1
         assert len(second) == 1
         assert len(results) == 1
-        assert results[0].record.workspace == "/repo/a"
+        assert results[0].record.scope_id == "/repo/a"
         assert results[0].record.scope == "workspace"
     finally:
         mem.close()
@@ -157,14 +158,15 @@ def test_hermes_import_refuses_obvious_secret_facts(tmp_path):
     assert DeepMemory(db).stats()["total"] == 0
 
 
-def test_workspace_scope_inference_hides_full_paths_and_supports_cross_workspace_search(tmp_path, monkeypatch):
+def test_scope_id_preserves_explicit_names_and_supports_cross_scope_search(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     session = tmp_path / "session.jsonl"
     session.write_text(
         json.dumps(
             {
                 "session_id": "s_scope2",
-                "workspace": str(tmp_path / "repo-a"),
+                "scope": "project",
+                "scope_id": str(tmp_path / "repo-a"),
                 "agent": "hermes",
                 "facts": [
                     {"content": "Project convention: default scope should be workspace", "kind": "semantic"}
@@ -179,8 +181,8 @@ def test_workspace_scope_inference_hides_full_paths_and_supports_cross_workspace
     write_hermes_session_facts(db, session)
     mem = DeepMemory(db)
     try:
-        row = mem.search("default scope", cross_workspace=True, include_global=False, limit=3)[0].record
-        assert row.scope == "workspace"
-        assert row.workspace == str(tmp_path / "repo-a")
+        row = mem.search("default scope", cross_scope=True, include_global=False, limit=3)[0].record
+        assert row.scope == "project"
+        assert row.scope_id == str(tmp_path / "repo-a")
     finally:
         mem.close()

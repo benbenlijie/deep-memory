@@ -19,6 +19,9 @@ def record_to_portable(record: MemoryRecord) -> dict[str, Any]:
     payload["source_info"] = asdict(record.source_info)
     payload["portable_schema_version"] = PORTABLE_SCHEMA_VERSION
     payload["idempotency_key"] = portable_idempotency_key(payload)
+    payload.pop("workspace", None)
+    payload.pop("tenant", None)
+    payload.pop("user_id", None)
     return payload
 
 
@@ -81,9 +84,7 @@ def import_portable(db: str | Path, portable_path: str | Path, *, merge: bool = 
                     event_time=record.get("event_time"),
                     valid_until=record.get("valid_until"),
                     scope=str(record.get("scope", "global")),  # type: ignore[arg-type]
-                    workspace=record.get("workspace"),
-                    tenant=record.get("tenant"),
-                    user_id=record.get("user_id"),
+                    scope_id=record.get("scope_id"),
                     agent=record.get("agent"),
                     idempotency_key=key,
                     duplicate_policy="skip",
@@ -133,6 +134,17 @@ def upgrade_portable_record(record: dict[str, Any]) -> dict[str, Any]:
     upgraded.setdefault("importance", 0.5)
     upgraded.setdefault("confidence", 0.8)
     upgraded.setdefault("scope", "global")
+    if "scope_id" not in upgraded:
+        if upgraded["scope"] in {"workspace", "project"}:
+            upgraded["scope_id"] = upgraded.get("workspace")
+        elif upgraded["scope"] == "tenant":
+            upgraded["scope_id"] = upgraded.get("tenant")
+        elif upgraded["scope"] == "user":
+            upgraded["scope_id"] = upgraded.get("user_id")
+        else:
+            upgraded["scope_id"] = None
+    for legacy_key in ("workspace", "tenant", "user_id"):
+        upgraded.pop(legacy_key, None)
     upgraded.setdefault("event_time", upgraded.get("created_at") or utcnow())
     upgraded.setdefault("created_at", upgraded["event_time"])
     upgraded.setdefault("updated_at", upgraded["created_at"])
@@ -188,9 +200,7 @@ def _find_merge_conflict(mem: DeepMemory, incoming: dict[str, Any]) -> Any | Non
         SELECT *
         FROM memories
         WHERE kind = ? AND scope = ?
-          AND COALESCE(workspace, '') = ?
-          AND COALESCE(tenant, '') = ?
-          AND COALESCE(user_id, '') = ?
+          AND COALESCE(scope_id, '') = ?
           AND COALESCE(agent, '') = ?
           AND conflict_status NOT IN ('deprecated', 'superseded', 'archived')
         ORDER BY updated_at DESC
@@ -198,9 +208,7 @@ def _find_merge_conflict(mem: DeepMemory, incoming: dict[str, Any]) -> Any | Non
         (
             str(incoming.get("kind", "semantic")),
             str(incoming.get("scope", "global")),
-            str(incoming.get("workspace") or ""),
-            str(incoming.get("tenant") or ""),
-            str(incoming.get("user_id") or ""),
+            str(incoming.get("scope_id") or ""),
             str(incoming.get("agent") or ""),
         ),
     ).fetchall()
@@ -215,9 +223,8 @@ def portable_idempotency_key(record: dict[str, Any]) -> str:
         str(record.get("content", "")),
         kind=str(record.get("kind", "semantic")),  # type: ignore[arg-type]
         source=None,
-        workspace=record.get("workspace"),
-        tenant=record.get("tenant"),
-        user_id=record.get("user_id"),
+        scope=str(record.get("scope", "global")),  # type: ignore[arg-type]
+        scope_id=record.get("scope_id"),
         agent=record.get("agent"),
     )
 
@@ -239,9 +246,7 @@ def portable_conflict_family(record: dict[str, Any]) -> str:
         "v1",
         str(record.get("kind", "semantic")),
         str(record.get("scope", "global")),
-        str(record.get("workspace") or ""),
-        str(record.get("tenant") or ""),
-        str(record.get("user_id") or ""),
+        str(record.get("scope_id") or ""),
         str(record.get("agent") or ""),
         head,
     ]
@@ -262,8 +267,8 @@ def _update_existing(mem: DeepMemory, record_id: str, record: dict[str, Any], ke
         """
         UPDATE memories
         SET content = ?, kind = ?, importance = ?, confidence = ?, source = ?, updated_at = ?,
-            event_time = ?, valid_until = ?, expires_at = ?, scope = ?, workspace = ?, tenant = ?,
-            user_id = ?, agent = ?, idempotency_key = ?
+            event_time = ?, valid_until = ?, expires_at = ?, scope = ?, scope_id = ?,
+            agent = ?, idempotency_key = ?
         WHERE id = ?
         """,
         (
@@ -277,9 +282,7 @@ def _update_existing(mem: DeepMemory, record_id: str, record: dict[str, Any], ke
             record.get("valid_until"),
             record.get("expires_at"),
             str(record.get("scope", "global")),
-            record.get("workspace"),
-            record.get("tenant"),
-            record.get("user_id"),
+            record.get("scope_id"),
             record.get("agent"),
             key,
             record_id,

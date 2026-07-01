@@ -79,7 +79,7 @@ def main() -> None:
             expected_ids[query] = mem.add(content, kind="semantic", importance=0.9).id
         passed = 0
         for query, _content in PAIRS:
-            results = mem.search(query, limit=1, retrieval_mode="hybrid", cross_workspace=True)
+            results = mem.search(query, limit=1, retrieval_mode="hybrid", cross_scope=True)
             ok = bool(results and results[0].record.id == expected_ids[query])
             passed += int(ok)
             print(f"{query}: {'PASS' if ok else 'FAIL'}")

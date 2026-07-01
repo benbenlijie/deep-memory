@@ -40,10 +40,16 @@ def run_codex_wrapper(
         raise ValueError("command cannot be empty")
 
     db_path = Path(db)
-    workspace = str(Path(cwd).resolve()) if cwd else None
+    scope_id = str(Path(cwd).resolve()) if cwd else None
     memory = DeepMemory(db_path)
     try:
-        recalled = memory.search(task, limit=limit, workspace=workspace, caller="wrapper")
+        recalled = memory.search(
+            task,
+            limit=limit,
+            scope="workspace" if scope_id else None,
+            scope_id=scope_id,
+            caller="wrapper",
+        )
     finally:
         memory.close()
 
@@ -58,7 +64,7 @@ def run_codex_wrapper(
     if facts_out is None or not Path(facts_out).exists():
         return AdapterRunResult(returncode=0, imported=())
 
-    imported = tuple(import_agent_facts(db_path, facts_out, agent_name=agent_name, workspace=workspace))
+    imported = tuple(import_agent_facts(db_path, facts_out, agent_name=agent_name, scope_id=scope_id))
     return AdapterRunResult(returncode=0, imported=imported)
 
 
@@ -86,7 +92,7 @@ def import_agent_facts(
     facts_jsonl: str | Path,
     *,
     agent_name: str,
-    workspace: str | None = None,
+    scope_id: str | None = None,
 ) -> list[MemoryRecord]:
     memory = DeepMemory(db)
     records: list[MemoryRecord] = []
@@ -99,14 +105,15 @@ def import_agent_facts(
                     importance=fact["importance"],
                     confidence=fact["confidence"],
                     source=fact["source"],
-                    scope="workspace" if workspace else "global",
-                    workspace=workspace,
+                    scope="workspace" if scope_id else "global",
+                    scope_id=scope_id,
                     agent=agent_name,
                     idempotency_key=build_idempotency_key(
                         fact["content"],
                         kind=fact["kind"],
                         source=fact["source"],
-                        workspace=workspace,
+                        scope="workspace" if scope_id else "global",
+                        scope_id=scope_id,
                         agent=agent_name,
                     ),
                     duplicate_policy="skip",

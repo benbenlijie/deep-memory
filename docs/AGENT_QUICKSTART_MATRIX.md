@@ -26,6 +26,7 @@ The current package is source-first. Use `uv run ...` from the `deep-memory` che
 | Write timing | After tests, review, command success, or explicit user confirmation |
 | Recall size | Small and ranked; usually 3-5 records, never the whole DB |
 | Source value | Include producing agent and context, e.g. `claude-code:project`, `hermes:profile`, `codex:manual`, `opencode:manual` |
+| Scope model | `scope` is the fixed layer (`global`, `user`, `tenant`, `workspace`, `project`); `scope_id` is the custom namespace such as `deep-memory` |
 
 Verified runnable baseline:
 
@@ -38,9 +39,11 @@ uv run deep-memory init .deep-memory/deep-memory.db
 uv run deep-memory add .deep-memory/deep-memory.db \
   "Project convention: run uv run pytest -q and uv run ruff check . before review" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8 \
   --source smoke:verified
-uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?"
+uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?" --scope project --scope-id deep-memory
 ```
 
 Note: `uv run deep-memory-mcp` requires the optional MCP dependency. If it fails with `MCP support requires the optional dependency`, run `uv sync --extra mcp` in this checkout and retry.
@@ -84,13 +87,13 @@ Use the project-local database at .deep-memory/deep-memory.db unless the user ch
 Verified runnable CLI fallback:
 
 ```bash
-uv run deep-memory search .deep-memory/deep-memory.db "repo conventions for this task"
+uv run deep-memory search .deep-memory/deep-memory.db "repo conventions for this task" --scope project --scope-id deep-memory
 ```
 
 Design / pending runtime verification via MCP:
 
 ```text
-Use the deep-memory MCP search tool with db_path=.deep-memory/deep-memory.db, query=<task-specific query>, limit=5.
+Use the deep-memory MCP search tool with db_path=.deep-memory/deep-memory.db, query=<task-specific query>, scope=project, scope_id=deep-memory, limit=5.
 ```
 
 ### Post-task write
@@ -101,6 +104,8 @@ Verified runnable CLI fallback:
 uv run deep-memory add .deep-memory/deep-memory.db \
   "Workflow: for this repo, run uv run pytest -q and uv run ruff check . before review" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8 \
   --source claude-code:manual
 ```
@@ -108,7 +113,7 @@ uv run deep-memory add .deep-memory/deep-memory.db \
 Design / pending runtime verification via MCP:
 
 ```text
-Use the deep-memory MCP add tool only after tests, review, or explicit user confirmation.
+Use the deep-memory MCP add tool only after tests, review, or explicit user confirmation. Pass scope=project and scope_id=deep-memory for project memory.
 ```
 
 ### Do not store
@@ -154,20 +159,20 @@ uv run deep-memory hermes-import .deep-memory/deep-memory.db /tmp/hermes-session
 
 - Project-local for repo work: `.deep-memory/deep-memory.db`
 - Hermes profile-level for personal agent memory: `~/.hermes/profiles/<profile>/deep-memory.db`
-- Kanban or multi-profile work should keep tenant/profile boundaries explicit. Do not read a global DB by default.
+- Kanban or multi-profile work should keep tenant/profile boundaries explicit with `scope="tenant"` and a concrete `scope_id`. Do not read a global DB by default.
 
 ### Pre-task search
 
 Verified runnable CLI fallback:
 
 ```bash
-uv run deep-memory search .deep-memory/deep-memory.db "Hermes workflow conventions for this task"
+uv run deep-memory search .deep-memory/deep-memory.db "Hermes workflow conventions for this task" --scope project --scope-id deep-memory
 ```
 
 Design / pending runtime verification via MCP:
 
 ```text
-Before a large tool-heavy task, call the MCP search tool with a task-specific query and inject only the top few relevant records.
+Before a large tool-heavy task, call the MCP search tool with a task-specific query, scope, and scope_id; inject only the top few relevant records.
 ```
 
 ### Post-task write
@@ -188,6 +193,8 @@ Verified runnable manual add fallback:
 uv run deep-memory add .deep-memory/deep-memory.db \
   "Project convention: verify docs changes with local link check, pytest, and ruff" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8 \
   --source hermes:manual
 ```

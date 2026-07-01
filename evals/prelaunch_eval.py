@@ -106,7 +106,7 @@ def _memory_tuple(
     confidence: float = 0.8,
     conflict_status: str = "active",
     scope: str = "global",
-    workspace: str | None = None,
+    scope_id: str | None = None,
     model_name: str | None = None,
     model_version: int | None = None,
 ) -> tuple[Any, ...]:
@@ -114,7 +114,7 @@ def _memory_tuple(
     return (
         memory_id, content, kind, importance, confidence, "prelaunch-eval",
         now, now, now, now, None, None, conflict_status, None, None,
-        scope, workspace, None, None, None, None, model_name, model_version,
+        scope, scope_id, None, None, model_name, model_version,
         0.5, 1.0, now,
     )
 
@@ -125,10 +125,10 @@ def _insert_memories(mem: DeepMemory, rows: Iterable[tuple[Any, ...]]) -> None:
         INSERT INTO memories (
             id, content, kind, importance, confidence, source,
             created_at, updated_at, learned_at, event_time, valid_until, expires_at,
-            conflict_status, supersedes_id, superseded_by_id, scope, workspace, tenant,
-            user_id, agent, idempotency_key, embedding_model, embedding_version,
+            conflict_status, supersedes_id, superseded_by_id, scope, scope_id,
+            agent, idempotency_key, embedding_model, embedding_version,
             baseline_trust, reputation, reputation_updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         list(rows),
     )
@@ -174,8 +174,19 @@ def _seed_eval_db(mem: DeepMemory, backend: PrelaunchEmbeddingBackend, size: int
         content = f"background memory {idx}: project note about docs config storage"
         rows.append(_memory_tuple(memory_id, content, model_name=backend.model_name, model_version=backend.model_version))
         embedding_inputs.append((memory_id, content))
-    for memory_id, content, status, scope, workspace in special_rows:
-        rows.append(_memory_tuple(memory_id, content, importance=0.95, conflict_status=status, scope=scope, workspace=workspace, model_name=backend.model_name, model_version=backend.model_version))
+    for memory_id, content, status, scope, scope_id in special_rows:
+        rows.append(
+            _memory_tuple(
+                memory_id,
+                content,
+                importance=0.95,
+                conflict_status=status,
+                scope=scope,
+                scope_id=scope_id,
+                model_name=backend.model_name,
+                model_version=backend.model_version,
+            )
+        )
         embedding_inputs.append((memory_id, content))
     _insert_memories(mem, rows)
     _insert_embeddings(mem, backend, embedding_inputs)
@@ -190,23 +201,37 @@ def _measure_latency(mem: DeepMemory, iterations: int) -> dict[str, Any]:
     latency: dict[str, Any] = {}
     for mode in ("fts5", "vector", "hybrid"):
         start = time.perf_counter()
-        mem.search(query, limit=5, retrieval_mode=mode, cross_workspace=True)
+        mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
         cold_ms = (time.perf_counter() - start) * 1000
         warm_samples = []
         for _ in range(iterations):
             start = time.perf_counter()
-            mem.search(query, limit=5, retrieval_mode=mode, cross_workspace=True)
+            mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
             warm_samples.append((time.perf_counter() - start) * 1000)
         latency[mode] = {"cold_ms": round(cold_ms, 3), "warm": _stats(warm_samples)}
     return latency
 
 
 def _evaluate_correctness(mem: DeepMemory) -> dict[str, Any]:
-    known = mem.search("unique-anchor", limit=5, retrieval_mode="hybrid", cross_workspace=True)
-    workspace_a = mem.search("deployment runbook", limit=5, retrieval_mode="hybrid", workspace="workspace-a", include_global=False)
-    workspace_b = mem.search("deployment runbook", limit=5, retrieval_mode="hybrid", workspace="workspace-b", include_global=False)
-    lifecycle = mem.search("deprecated superseded archived testing playbook", limit=10, retrieval_mode="hybrid", cross_workspace=True)
-    mixed = mem.search("部署 shipping checklist", limit=5, retrieval_mode="hybrid", cross_workspace=True)
+    known = mem.search("unique-anchor", limit=5, retrieval_mode="hybrid", cross_scope=True)
+    workspace_a = mem.search(
+        "deployment runbook",
+        limit=5,
+        retrieval_mode="hybrid",
+        scope="workspace",
+        scope_id="workspace-a",
+        include_global=False,
+    )
+    workspace_b = mem.search(
+        "deployment runbook",
+        limit=5,
+        retrieval_mode="hybrid",
+        scope="workspace",
+        scope_id="workspace-b",
+        include_global=False,
+    )
+    lifecycle = mem.search("deprecated superseded archived testing playbook", limit=10, retrieval_mode="hybrid", cross_scope=True)
+    mixed = mem.search("部署 shipping checklist", limit=5, retrieval_mode="hybrid", cross_scope=True)
     lifecycle_ids = set(_ids(lifecycle))
     return {
         "known_target_top1": {"passed": bool(known and known[0].record.id == "known-target"), "top_ids": _ids(known)},
@@ -258,7 +283,7 @@ def _memory_usage(mem: DeepMemory, db_path: Path) -> dict[str, int]:
 
 def _evaluate_reproducibility(mem: DeepMemory) -> dict[str, Any]:
     runs = [
-        _ids(mem.search("target testing playbook", limit=5, retrieval_mode="hybrid", cross_workspace=True))
+        _ids(mem.search("target testing playbook", limit=5, retrieval_mode="hybrid", cross_scope=True))
         for _ in range(2)
     ]
     return {"runs": runs, "stable_top1": bool(runs[0] and runs[1] and runs[0][0] == runs[1][0])}
@@ -276,7 +301,7 @@ def _evaluate_fallback(mem: DeepMemory) -> dict[str, Any]:
     builtins.__import__ = guarded_import
     try:
         cached = mem._build_vector_search_cache([])
-        results = mem.search("target testing playbook", limit=5, retrieval_mode="auto", cross_workspace=True)
+        results = mem.search("target testing playbook", limit=5, retrieval_mode="auto", cross_scope=True)
     finally:
         builtins.__import__ = original_import
         mem._invalidate_vector_search_cache()

@@ -41,7 +41,9 @@ uv run deep-memory init .deep-memory/deep-memory.db
 Before a large task, search for relevant project conventions:
 
 ```bash
-uv run deep-memory search .deep-memory/deep-memory.db "repo conventions for this task"
+uv run deep-memory search .deep-memory/deep-memory.db "repo conventions for this task" \
+  --scope project \
+  --scope-id deep-memory
 ```
 
 Keep the result short. Only pass the few memories that matter into the agent prompt.
@@ -54,8 +56,12 @@ After tests, review, or user confirmation, write only durable facts or reusable 
 uv run deep-memory add .deep-memory/deep-memory.db \
   "Workflow: run uv run pytest -q before review" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8
 ```
+
+`scope` is the fixed layer (`global`, `user`, `tenant`, `workspace`, or `project`). `scope_id` is the custom namespace under that layer, such as a project name.
 
 Do not store secrets, raw credentials, auth cookies, or temporary task status.
 
@@ -97,7 +103,7 @@ If MCP is not available yet, use a wrapper pattern:
 
 ```bash
 MEMORY_DB=.deep-memory/deep-memory.db
-uv run deep-memory search "$MEMORY_DB" "repo conventions for this task"
+uv run deep-memory search "$MEMORY_DB" "repo conventions for this task" --scope project --scope-id deep-memory
 ```
 
 After the task, write back only what survived verification:
@@ -106,6 +112,8 @@ After the task, write back only what survived verification:
 uv run deep-memory add "$MEMORY_DB" \
   "Workflow: for this repo, run uv run pytest -q and uv run ruff check . before review" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8 \
   --source codex:manual
 ```
