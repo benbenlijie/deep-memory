@@ -1,12 +1,19 @@
-<div align="center">
+<p align="center">
   <img src="docs/assets/deep-memory-logo.svg" alt="deep-memory" width="500">
+</p>
 
-  <p><strong>Machine-local memory for all your agents. Inspect what they remember. Decide what they keep.</strong></p>
+<h1 align="center">deep-memory</h1>
+
+<p align="center"><em>It remembers the thing you approved. Everything else has to earn the right.</em></p>
+
+<div align="center">
+
+  <p><strong>A local memory notebook for agents that forget too much, remember too much, and rarely ask permission.</strong></p>
 
   <p>
-    A shared, inspectable memory layer for Claude Code, Codex, OpenCode, and Hermes.
-    Store explicit durable facts and procedures in a machine-local SQLite database, with scoped records for global, user, tenant, workspace, and project namespaces —
-    not hidden cloud state, not raw transcript scraping, not opaque global memory.
+    <code>deep-memory</code> is the memory layer I wanted while wiring real agents together: boring SQLite on this machine,
+    explicit durable facts and reusable procedures, scoped recall, and a delete button that actually means delete.
+    No hidden cloud state. No transcript hoarding. No mysterious "memory" you have to trust because the UI says so.
   </p>
 
   <p>
@@ -15,11 +22,13 @@
   </p>
 
   <p>
-    <a href="https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml"><img src="https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-    <img src="https://img.shields.io/badge/status-alpha-orange" alt="Status">
+    <a href="https://github.com/benbenlijie/deep-memory/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/benbenlijie/deep-memory/ci.yml?style=flat-square&color=111111&label=ci" alt="CI"></a>
+    <img src="https://img.shields.io/badge/python-3.10%2B-111111?style=flat-square" alt="Python">
+    <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="License">
+    <img src="https://img.shields.io/badge/status-alpha-111111?style=flat-square" alt="Status">
   </p>
+
+  <p><strong>75/75 Chinese retrieval evals · 20/20 bilingual memory tasks · local SQLite · explicit writes · scoped recall</strong></p>
 
   <p>
     <a href="#quickstart">Quickstart</a> ·
@@ -31,13 +40,11 @@
   </p>
 </div>
 
-<p align="center">
-  <img src="docs/assets/deep-memory-architecture.svg" alt="deep-memory architecture" width="920">
-</p>
+---
 
-<p align="center">
-  <img src="docs/assets/webui-memory-inspector.png" alt="deep-memory WebUI memory inspector screenshot" width="920">
-</p>
+You know the feeling. The agent confidently forgets the rule you gave it yesterday. Then, somehow, it remembers a half-wrong preference from three experiments ago and drags it into a new repo.
+
+`deep-memory` is for people who like agents, but do not want agent memory to become folklore.
 
 ## Choose the path that fits what you need
 
@@ -50,7 +57,24 @@
 | Checking the safety boundary before rollout | [Safety boundary](#safety-boundary) | Explicit write rules, scope boundaries, and destructive controls |
 | Inspecting how the system is built | [Architecture](#architecture) | Mechanism, storage model, retrieval path, and extension surface |
 
+## Before / after
+
+Without a shared memory layer, every agent has the same bad habit: it either forgets the thing you explained yesterday, or it remembers something somewhere you cannot inspect. You repeat preferences, repo conventions, safety rules, and all the tiny "please don't do that again" corrections. Then next week you still have no idea what stuck.
+
+With `deep-memory`, a useful convention becomes a scoped, reviewable record:
+
+```text
+project:deep-memory  procedural  "Run uv run pytest -q before review"
+user:ben             semantic    "User prefers concise answers with English technical terms"
+```
+
+Claude Code, Codex, OpenCode, and Hermes can pull the same bounded context before work. You can inspect it in the CLI or local WebUI, edit it, export it, soft-delete it, or hard-delete it when a memory should stop steering future behavior.
+
 ## Why this exists
+
+I do not want agents to become more "personalized" by quietly accumulating invisible state. That is just a new place for bugs to hide.
+
+I want memory to behave like infrastructure: local by default, inspectable when something feels off, scoped narrowly enough to avoid leaking context between projects, and testable enough that "supports Chinese" means an eval passed, not a badge on a README.
 
 Most agent memory fails in one of two ways: it forgets everything useful between sessions, or it remembers too much in a place the user cannot inspect. Both are bad substrates for serious work.
 
@@ -65,12 +89,37 @@ Most agent memory fails in one of two ways: it forgets everything useful between
 
 Persistent agent memory is powerful precisely because it changes future behavior. `deep-memory` keeps the mechanism narrow: store durable facts and reusable procedures, keep them local and inspectable, retrieve only relevant context, and make deletion and policy boundaries explicit.
 
+## How it works
+
+Before an agent relies on memory, it walks a short governance path:
+
+```text
+1. Is this durable?        → no: do not store it
+2. Is it safe to retain?   → secrets / raw private transcripts / temporary status are denied
+3. What scope is narrowest?→ project, workspace, user, tenant, or global
+4. Can a human inspect it? → CLI, Python SDK, local WebUI, export, audit
+5. Is it still useful?     → edit, deprecate, resolve conflict, or delete
+6. Is it procedural?       → export as a reviewable skill candidate, not an auto-installed rule
+```
+
 That control surface matters because a useful memory layer needs more than storage:
 
 - **Inspectability.** Humans should be able to see what an agent will carry forward.
 - **Deletion.** Wrong, stale, private, or unsafe records must be removable, not merely hidden by ranking.
 - **Scoping.** Machine-level memory should stay relevant through fixed scopes plus explicit namespace IDs.
 - **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/assets/webui-memory-inspector.png" alt="deep-memory WebUI memory inspector screenshot" width="920">
+</p>
+
+## Architecture
+
+<p align="center">
+  <img src="docs/assets/deep-memory-architecture.svg" alt="deep-memory architecture" width="920">
+</p>
 
 ## Quickstart
 
