@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any, cast
 
 import typer
 from rich.console import Console
@@ -14,6 +16,7 @@ from .adapters.hermes import write_hermes_session_facts
 from .core import DeepMemory
 from .portable import diff_databases, export_portable, import_portable
 from .privacy import ensure_memory_content_allowed
+from .skill_export import procedural_memory_to_skill_markdown
 from .webui import run_server
 
 app = typer.Typer(help="Persistent memory for AI agents")
@@ -24,6 +27,17 @@ app.add_typer(trust_app, name="trust")
 app.add_typer(agent_app, name="agent")
 app.add_typer(scope_app, name="scope")
 console = Console()
+DEFAULT_MCP_DB = "~/.deep-memory/deep-memory.db"
+DEFAULT_MCP_COMMAND = "deep-memory-mcp"
+
+
+def _mcp_config_payload(db: str, command: str = DEFAULT_MCP_COMMAND) -> dict[str, Any]:
+    return {
+        "command": command,
+        "args": ["--db", db],
+        "env": {},
+        "notes": "Review this reviewable snippet before adding it to an agent config; deep-memory does not modify user configuration files.",
+    }
 
 
 def _record_payload(record) -> dict[str, object]:
@@ -34,6 +48,22 @@ def _record_payload(record) -> dict[str, object]:
 
 def _trust_audit_payload(entry) -> dict[str, object]:
     return asdict(entry)
+
+
+def _is_active_hermes_skills_path(path: Path) -> bool:
+    try:
+        resolved = path.expanduser().resolve()
+    except OSError:
+        resolved = path.expanduser().absolute()
+    home = Path.home().resolve()
+    active_roots = [home / ".hermes" / "skills"]
+    profile_skills_root = home / ".hermes" / "profiles"
+    if profile_skills_root in resolved.parents:
+        relative = resolved.relative_to(profile_skills_root)
+        parts = relative.parts
+        if len(parts) >= 2 and parts[1] == "skills":
+            active_roots.append(profile_skills_root / parts[0] / "skills")
+    return any(root in (resolved, *resolved.parents) for root in active_roots)
 
 
 @trust_app.command("list")
@@ -161,12 +191,167 @@ def agent_trust(
     console.print_json(json.dumps(result, ensure_ascii=False))
 
 
+@app.command("export-skill")
+def export_skill(
+    db: Path,
+    memory_id: str,
+    output: Path = typer.Option(..., "--output", "-o", help="Review-directory SKILL.md candidate path"),
+    name: str | None = typer.Option(None, "--name", help="Skill candidate name"),
+    evidence: list[str] = typer.Option((), "--evidence", help="Concrete evidence supporting this candidate"),
+    recurrence_hint: str | None = typer.Option(None, "--recurrence-hint", help="Why this procedure is likely to recur"),
+) -> None:
+    """Export a procedural memory as a review-only skill candidate file."""
+
+    if _is_active_hermes_skills_path(output):
+        raise typer.BadParameter("--output must be a review directory, not an active Hermes skills directory")
+    mem = DeepMemory(db)
+    try:
+        record = mem.get(memory_id)
+        candidate = procedural_memory_to_skill_markdown(
+            record,
+            name=name,
+            evidence=evidence,
+            recurrence_hint=recurrence_hint,
+        )
+    except KeyError as exc:
+        raise typer.BadParameter(f"unknown memory id: {memory_id}") from exc
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    finally:
+        mem.close()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(candidate.markdown, encoding="utf-8")
+    console.print_json(
+        json.dumps(
+            {
+                "candidate_path": str(output),
+                "source_memory_id": candidate.source_memory_id,
+                "auto_install": candidate.auto_install,
+                "auto_install_label": "Auto-install: no",
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
+@app.command("mcp-config")
+def mcp_config(
+    agent: str = typer.Option(..., "--agent", help="Target agent: hermes, claude, or generic"),
+    db: str = typer.Option(DEFAULT_MCP_DB, "--db", help="Machine-local deep-memory SQLite database path"),
+    json_output: bool = typer.Option(False, "--json", help="Print generic machine-readable JSON"),
+) -> None:
+    """Print reviewable MCP config snippets without modifying user config files."""
+    if agent not in {"hermes", "claude", "generic"}:
+        raise typer.BadParameter("--agent must be hermes, claude, or generic")
+
+    payload = _mcp_config_payload(db)
+    if json_output or agent == "generic":
+        console.print_json(json.dumps(payload, ensure_ascii=False))
+        return
+
+    if agent == "hermes":
+        args = payload["args"]
+        typer.echo("# Review this snippet, then add it to the chosen Hermes profile config.yaml if correct.")
+        typer.echo("# deep-memory does not modify user configuration files.")
+        typer.echo("mcp_servers:")
+        typer.echo("  deep_memory:")
+        typer.echo(f"    command: \"{payload['command']}\"")
+        typer.echo(f"    args: {json.dumps(args, ensure_ascii=False)}")
+        typer.echo("    timeout: 30")
+        return
+
+    command = str(payload["command"])
+    args = [str(arg) for arg in cast(list[str], payload["args"])]
+    typer.echo("# Review this command before running it; deep-memory does not modify Claude configuration files.")
+    typer.echo(f"claude mcp add deep-memory -- {command} {' '.join(args)}")
+
+
 @app.command()
 def init(db: Path = typer.Argument(..., help="SQLite database path")) -> None:
     """Initialize a deep-memory database."""
     mem = DeepMemory(db)
     mem.close()
     console.print(f"initialized [bold]{db}[/bold]")
+
+
+@app.command("verify-install")
+def verify_install(
+    db: Path = typer.Argument(Path(DEFAULT_MCP_DB), help="SQLite database path to initialize and smoke test"),
+    json_output: bool = typer.Option(False, "--json", help="Print machine-readable verification result"),
+) -> None:
+    """Verify a deep-memory install with a write/search/cleanup smoke test."""
+    db = db.expanduser()
+    payload: dict[str, Any] = {
+        "success": False,
+        "db": str(db),
+        "cli_ok": True,
+        "db_ok": False,
+        "write_ok": False,
+        "search_ok": False,
+        "cleanup_ok": False,
+        "mcp_import_ok": False,
+        "scope": "workspace",
+        "scope_id": "verify-install",
+        "record_id": None,
+        "errors": [],
+    }
+
+    def fail(message: str) -> None:
+        payload["errors"].append(message)  # type: ignore[union-attr]
+        if json_output:
+            console.print_json(json.dumps(payload, ensure_ascii=False))
+        else:
+            console.print(f"deep-memory install verification failed: {message}")
+        raise typer.Exit(1)
+
+    if db.exists() and db.is_dir():
+        fail("database path points to a directory")
+
+    marker = "deep-memory verify-install smoke"
+    mem = DeepMemory(db)
+    try:
+        payload["db_ok"] = True
+        record = mem.add(
+            marker,
+            kind="working",
+            importance=0.1,
+            confidence=1.0,
+            source="verify-install",
+            scope="workspace",
+            scope_id="verify-install",
+        )
+        payload["record_id"] = record.id
+        payload["write_ok"] = True
+        rows = mem.search(
+            marker,
+            limit=3,
+            scope="workspace",
+            scope_id="verify-install",
+            include_global=False,
+            caller="verify-install",
+        )
+        payload["search_ok"] = any(result.record.id == record.id for result in rows)
+        if not payload["search_ok"]:
+            fail("test memory was written but not found by scoped search")
+        payload["cleanup_ok"] = mem.hard_delete(record.id) == 1
+    except Exception as exc:
+        fail(str(exc))
+    finally:
+        mem.close()
+
+    payload["mcp_import_ok"] = importlib.util.find_spec("deep_memory.mcp_server") is not None
+    if not payload["mcp_import_ok"]:
+        fail("deep_memory.mcp_server cannot be imported")
+
+    payload["success"] = True
+    if json_output:
+        console.print_json(json.dumps(payload, ensure_ascii=False))
+    else:
+        console.print(f"deep-memory install verification succeeded: {db}")
+        console.print(
+            f"write_ok={payload['write_ok']} search_ok={payload['search_ok']} "
+            f"cleanup_ok={payload['cleanup_ok']} mcp_import_ok={payload['mcp_import_ok']}"
+        )
 
 
 @app.command()

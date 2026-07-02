@@ -109,6 +109,21 @@ That control surface matters because a useful memory layer needs more than stora
 - **Scoping.** Machine-level memory should stay relevant through fixed scopes plus explicit namespace IDs.
 - **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
 
+## More than an MCP server
+
+MCP is a connection protocol, not the product boundary. `deep-memory-mcp` is one adapter into `deep-memory`; it is not the whole system.
+
+The product shape is deliberately broader and still machine-local, scoped, and inspectable:
+
+- **Memory substrate:** a local SQLite store with durable semantic, episodic, and procedural records, fixed `scope`, and explicit `scope_id` namespaces.
+- **CLI and Python SDK:** direct ways to initialize, write, search, audit, export, delete, and embed memory behavior without requiring MCP.
+- **MCP server:** a protocol bridge for MCP-native agents that should point at the same local database, not a separate memory product.
+- **WebUI:** a local inspection and editing surface for records that should not remain hidden inside agent context.
+- **Adapters and wrappers:** agent-specific integration paths for tools that do not yet speak MCP cleanly.
+- **Skill layer:** procedural memories can become reviewable skill candidates after evidence and review, so repeated workflows can be promoted into installable skills without silently changing future behavior.
+
+The last layer is intentionally review-first. `deep-memory` can export candidate skill markdown from verified procedural memory, but it should not auto-install skills into an agent profile. Automatic installation would turn memory into hidden behavioral drift: the agent would start acting differently because a stored procedure crossed an invisible boundary. The safe loop is evidence → candidate → reviewer gate → explicit installation through the normal skill-management path.
+
 ## Screenshots
 
 <p align="center">
@@ -129,15 +144,17 @@ If you want the fastest path, ask your coding agent:
 
 Agent checklist:
 1. Read [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md).
-2. Install dependencies and initialize a machine-local memory store.
-3. Connect your agent through MCP or a wrapper.
-4. Verify that one durable memory can be written and retrieved.
-5. Report which scopes you configured (for example: global, workspace, or project).
+2. Inspect the machine-readable install contract at [`docs/agent-install.json`](docs/agent-install.json).
+3. Install dependencies and initialize a machine-local memory store.
+4. Connect your agent through MCP or a wrapper.
+5. Verify that one durable memory can be written and retrieved.
+6. Report which scopes you configured (for example: global, workspace, or project).
 
 ### Prerequisites
 
 - Python 3.10–3.12 (`requires-python = >=3.10,<3.13` in `pyproject.toml`)
 - [`uv`](https://docs.astral.sh/uv/) for environment sync and command execution
+- Package/release maintainers: see [`docs/PACKAGING.md`](docs/PACKAGING.md) for the wheel, uv tool, GitHub Release, and PyPI readiness checklist.
 - Optional extras depending on what you want:
   - `dev`: pytest + ruff for local verification
   - `mcp`: the `deep-memory-mcp` server for MCP-native agent integrations
@@ -155,7 +172,7 @@ If you just want to prove the mechanism works before wiring any agent, this path
 
 ```bash
 uv sync --extra dev --extra mcp
-uv run deep-memory init ~/.deep-memory/deep-memory.db
+uv run deep-memory verify-install ~/.deep-memory/deep-memory.db --json
 uv run deep-memory add ~/.deep-memory/deep-memory.db \
   "User wants agents to use deep-memory as shared persistent memory" \
   --kind semantic \
@@ -223,6 +240,14 @@ Use MCP when your agent supports it. Use a wrapper when it does not. Either way,
 ~/.deep-memory/deep-memory.db
 ```
 
+For custom MCP clients, generate a reviewable machine-readable launch payload:
+
+```bash
+deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json
+```
+
+For agents that prefer a full install contract, read [`docs/agent-install.json`](docs/agent-install.json). It declares the install mode, default DB, verify command, MCP command/args, safe-write policy, scope policy, and success report schema.
+
 | Agent | Integration path | Config file / touchpoint | Difficulty |
 | --- | --- | --- | --- |
 | Claude Code | MCP | `CLAUDE.md` + Claude MCP config | Easy |
@@ -233,7 +258,13 @@ Use MCP when your agent supports it. Use a wrapper when it does not. Either way,
 <summary>Claude Code setup</summary>
 
 ```bash
-claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
+deep-memory mcp-config --agent claude --db ~/.deep-memory/deep-memory.db
+```
+
+This prints the reviewable command to run, for example:
+
+```bash
+claude mcp add deep-memory -- deep-memory-mcp --db ~/.deep-memory/deep-memory.db
 ```
 
 Add this to `CLAUDE.md` so the policy is explicit:
@@ -249,11 +280,17 @@ Never store secrets, raw credentials, or temporary issue status.
 <details>
 <summary>Hermes setup</summary>
 
+```bash
+deep-memory mcp-config --agent hermes --db ~/.deep-memory/deep-memory.db
+```
+
+This prints a reviewable `config.yaml` snippet, for example:
+
 ```yaml
 mcp_servers:
   deep_memory:
-    command: "uv"
-    args: ["--directory", "/absolute/path/to/deep-memory", "run", "deep-memory-mcp"]
+    command: "deep-memory-mcp"
+    args: ["--db", "~/.deep-memory/deep-memory.db"]
     timeout: 30
 ```
 

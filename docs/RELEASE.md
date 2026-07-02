@@ -87,3 +87,5 @@ Then update `README.md` to replace the source-only install note with the PyPI in
 ## Current release blocker
 
 Local build and metadata validation can run without credentials. Publishing is blocked unless the operator provides PyPI/TestPyPI API tokens via `TWINE_PASSWORD` and explicitly approves upload. Do not publish from automation without that approval.
+
+For this release candidate, use [`docs/release-notes-v0.1.0.md`](release-notes-v0.1.0.md) as the draft GitHub Release body and [`docs/release-gate-install-2026-07-02.md`](release-gate-install-2026-07-02.md) as the evidence log.
