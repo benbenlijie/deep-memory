@@ -109,6 +109,21 @@ Agent 在依赖记忆之前，先走一条很短的治理路径：
 - **作用域控制（Scoping）。** 全机级记忆必须通过固定 scope 与显式 scope_id 保持相关性。
 - **回归测试（Regression tests）。** 检索质量和安全边界应该用 fixture 持续检查，而不是靠文案断言。
 
+## 不只是一个 MCP server
+
+MCP 是连接协议，不是产品本体。`deep-memory-mcp` 只是接入 `deep-memory` 的一个 adapter，不是整个系统。
+
+`deep-memory` 的交付形态刻意更完整，同时仍然保持 machine-local、scoped、inspectable：
+
+- **Memory substrate：** 本地 SQLite 存储 durable semantic、episodic、procedural records，用固定 `scope` 和显式 `scope_id` 约束命名空间。
+- **CLI 与 Python SDK：** 不依赖 MCP，也可以初始化、写入、检索、审计、导出、删除，并把 memory behavior 嵌入到工具里。
+- **MCP server：** 给 MCP-native agents 使用的协议桥，应该指向同一份本地数据库，而不是另一套独立记忆产品。
+- **WebUI：** 本地检查与编辑界面，让记录不要藏在 Agent context 里不可见。
+- **Adapters 与 wrappers：** 给暂时还不能干净接 MCP 的工具提供 agent-specific 集成路径。
+- **Skill layer：** procedural memory 经过 evidence 和 review 后，可以导出为可审查 skill candidate，让可复用工作流被显式提升为可安装 skill，而不是悄悄改变未来行为。
+
+最后这一层必须保持 review-first。`deep-memory` 可以从已验证的 procedural memory 导出 candidate skill markdown，但不应该自动安装到 Agent profile。自动安装会把 memory 变成 hidden behavioral drift：Agent 因为某条存储过程跨过了不可见边界，而开始悄悄改变行为。安全的 loop 是 evidence → candidate → reviewer gate → 通过正常 skill-management 路径显式安装。
+
 ## 截图
 
 <p align="center">

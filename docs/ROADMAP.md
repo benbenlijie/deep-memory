@@ -13,17 +13,30 @@ of shipping order. Status of any line item can always be checked against the
 
 ## Current focus
 
-M+12 is the cross-agent ecosystem phase: turn the working local memory core
-into a contribution surface that external agent users can test, extend, and
-govern. The next phase is split into public lanes so contributors can pick a
-bounded problem and verify it with evidence.
+M+12 is the automatic local cross-agent memory phase: turn the working local
+memory core into the shared memory substrate for one person using many agents.
+The main product wedge is no longer generic memory storage or a cloud/team
+platform. It is: teach once, then Claude Code, Codex, Hermes, OpenCode, and
+future local agents can recall the right project-scoped memory without
+re-teaching or cross-project leakage.
 
-- Adapter lane: smoke transcripts and thin wrappers for Claude Code, Codex,
-  OpenCode, OpenClaw-style runtimes, Hermes, and future MCP-capable agents.
-- Eval lane: Chinese-first retrieval, privacy-boundary cases, memory/no-memory
-  tasks, and Memory × Skill activation regressions.
-- Governance lane: memory write policy, explicit consent boundaries,
-  delete/export guarantees, and maintainer review checklists.
+See [`AUTOMATIC_LOCAL_AGENT_MEMORY.md`](AUTOMATIC_LOCAL_AGENT_MEMORY.md) for the
+current iteration design and
+[`plans/2026-07-02-automatic-local-agent-memory.md`](plans/2026-07-02-automatic-local-agent-memory.md)
+for the implementation plan.
+
+The next phase is split into public lanes so contributors can pick a bounded
+problem and verify it with evidence.
+
+- Adapter lane: automatic pre-task recall and post-task extraction for Claude
+  Code, Codex, OpenCode, OpenClaw-style runtimes, Hermes, and future
+  MCP-capable agents.
+- Eval lane: cross-agent recall, project scope isolation, Chinese-first
+  retrieval, privacy-boundary cases, memory/no-memory tasks, and Memory × Skill
+  activation regressions.
+- Governance lane: automatic write policy, risk filtering, selective
+  confirmation for high-risk/high-impact memories, delete/export guarantees,
+  and memory hygiene reports.
 - Docs lane: quickstart matrix, troubleshooting, contribution paths, and public
   issue templates.
 - Good-first-issue lane: small fixtures, docs fixes, CLI output polish, and
@@ -51,17 +64,22 @@ work items, acceptance criteria, and verification commands.
 - Conflict detection and user-confirmed resolution.
 - Web inspector/editor.
 
-### Phase 3 — Ecosystem / M+12 cross-agent phase
+### Phase 3 — Automatic local cross-agent phase
 
-The M+12 phase is about making `deep-memory` useful beyond one maintainer
-workflow. The root-node work is to expose stable contracts, repeatable
-verification, and safe contribution lanes.
+The M+12 phase is about making `deep-memory` useful for individual power users
+who move between multiple local agents. The root-node work is to expose stable
+contracts, automatic extraction, repeatable verification, and safe contribution
+lanes.
 
 - MCP server and conflict lifecycle tools as the shared cross-agent surface.
+- Automatic agent-session extraction from redacted summaries, tool traces, and
+  facts JSONL; not raw transcript hoarding.
 - Memory → skill generator and Skill × Memory activation, always behind review
-  boundaries.
+  boundaries when memory would become active agent behavior.
 - Shared memory adapters for Hermes, Claude Code, Codex, OpenCode/OpenClaw-style
   tools.
+- Memory hygiene reports that summarize new, stale, duplicate, conflicting, and
+  risky records without asking the user to approve every memory.
 - Public internal eval/regression lanes, starting with checked-in fixtures before
   broader claims.
 - Community backlog with `good first issue`, `help wanted`, `adapter`, `eval`,

@@ -2,16 +2,21 @@
 
 `deep-memory` should work even when your workflow jumps between tools: Claude Code for one task, Codex for another, Hermes for orchestration, OpenCode or OpenClaw-style agents for longer runs.
 
-The adapter layer has one job: let each agent read a small amount of useful memory before work, then write back only facts or procedures that are worth keeping.
+The adapter layer has one job: let each agent read a small amount of useful
+memory before work, then automatically extract and write back only facts or
+procedures that are worth keeping.
 
-No hidden transcript scraping. No silent cloud sync. No auto-installed skills.
+No hidden raw-transcript hoarding. No silent cloud sync. No auto-installed
+skills. See [`AUTOMATIC_LOCAL_AGENT_MEMORY.md`](AUTOMATIC_LOCAL_AGENT_MEMORY.md)
+for the current automatic local cross-agent memory iteration.
 
 ## What an adapter must do
 
 An adapter only needs two operations at first:
 
 1. `search` before or during an agent run.
-2. `add` after the agent has a durable fact or a verified procedure.
+2. `extract + add` after the agent run, using a redacted session summary,
+   structured observations, or facts JSONL rather than full raw transcripts.
 
 Everything else can wait. Conflict tools, skill generation, richer scopes, and vector search are useful, but they should not make the first adapter hard to build.
 
@@ -19,10 +24,14 @@ Everything else can wait. Conflict tools, skill generation, richer scopes, and v
 
 - Use an explicit SQLite DB path, usually project-local: `.deep-memory/deep-memory.db`.
 - Keep recall small. Do not paste the whole memory DB into the prompt.
-- Write explicit facts, not raw transcripts.
-- Write procedural memory only after evidence: tests, review, or user confirmation.
+- Write durable facts/procedures extracted through policy gates, not raw
+  transcripts.
+- Write procedural memory after evidence: tests, command output, review, or a
+  repeated successful workflow.
 - Preserve source: agent name, session/run id, workspace, and source event when available.
 - Do not store secrets, raw credentials, private keys, auth cookies, or temporary task status.
+- Do not ask the user to approve every ordinary memory. Surface only high-risk,
+  high-impact, conflicting, or low-confidence/high-importance items.
 
 ## Minimal common adapter protocol
 

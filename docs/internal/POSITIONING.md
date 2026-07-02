@@ -4,15 +4,21 @@
 
 如果你退后一步看，agent memory 不是“把更多历史塞回 prompt”的问题。真正的问题是：一个长期运行的 agent 如何把经验转化成可检索、可审计、可遗忘、可纠错、可复用的状态。
 
-`deep-memory` 的当前定位：
+`deep-memory` 的当前定位已经更新为个人本地、多 agent 共享记忆：
 
 > Chinese-first, local-first, inspectable memory governance for AI agents, with a deliberate path from remembered facts to reusable skills.
 
+更贴近当前迭代的版本：
+
+> A local shared memory layer for individual AI-agent power users: automatic extraction from agent sessions, scoped recall across Claude Code / Codex / Hermes / OpenCode, inspectable local storage, deletion, and Chinese-capable retrieval.
+
 更短一点：
 
-> The memory governance layer for agents that need durable context, Chinese retrieval quality, and Memory × Skill compounding.
+> Teach once. Every local agent remembers, within the right scope.
 
-这不是另一个 vector DB，也暂时不应声称自己已经超过 Mem0/Zep/Graphiti/Cognee/LangMem/TencentDB-Agent-Memory。当前更 defensible 的 wedge 是：把“长期记忆质量”拆成可测量的生命周期问题，而不是只讲存储结构或 demo 效果。
+这不是另一个 vector DB，也暂时不应声称自己已经超过 Mem0/Zep/Graphiti/Cognee/LangMem/TencentDB-Agent-Memory。当前更 defensible 的 wedge 是：把“长期记忆质量”拆成可测量的生命周期问题，并先在个人本地 cross-agent 工作流里证明价值，而不是做 cloud/team 平台或泛多模态 ingestion 竞赛。
+
+See also: [`../AUTOMATIC_LOCAL_AGENT_MEMORY.md`](../AUTOMATIC_LOCAL_AGENT_MEMORY.md).
 
 ## 2. Facts / assumptions / hypotheses
 

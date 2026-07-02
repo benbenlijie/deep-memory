@@ -1,0 +1,44 @@
+{
+  "name": "deep-memory",
+  "default_db": "~/.deep-memory/deep-memory.db",
+  "install": {
+    "source": {
+      "command": "git clone https://github.com/benbenlijie/deep-memory.git && cd deep-memory && uv sync --extra mcp"
+    },
+    "package": {
+      "command": "uv tool install deep-memory[mcp]"
+    }
+  },
+  "verify": {
+    "command": "deep-memory verify-install ~/.deep-memory/deep-memory.db --json"
+  },
+  "connect": {
+    "mcp": {
+      "command": "deep-memory-mcp",
+      "args": ["--db", "~/.deep-memory/deep-memory.db"]
+    },
+    "config_snippets": {
+      "hermes": "deep-memory mcp-config --agent hermes --db ~/.deep-memory/deep-memory.db",
+      "claude": "deep-memory mcp-config --agent claude --db ~/.deep-memory/deep-memory.db",
+      "generic": "deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json"
+    }
+  },
+  "safe_write_policy": {
+    "allowed_content": ["durable user preferences", "verified project conventions", "reusable procedures", "stable semantic facts"],
+    "forbidden_content": ["secrets", "raw transcripts", "temp status", "unverified guesses", "credentials"]
+  },
+  "scope_policy": {
+    "fixed_scopes": ["global", "user", "tenant", "workspace", "project"],
+    "custom_namespace_field": "scope_id",
+    "default_scope": "workspace"
+  },
+  "success_report_schema": {
+    "required": ["success", "db", "write_ok", "search_ok", "mcp_import_ok"],
+    "optional": ["record_id", "scope", "scope_id", "errors"]
+  },
+  "side_effect_boundaries": [
+    "do not auto-star repositories",
+    "do not install active skills without review",
+    "do not modify user agent config files; output reviewable snippets only"
+  ]
+}
