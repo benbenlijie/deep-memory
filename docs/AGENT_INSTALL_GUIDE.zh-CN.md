@@ -6,6 +6,8 @@
 
 ## 1. 克隆并安装
 
+Agent 也可以读取机器可读安装协议：[`docs/agent-install.json`](agent-install.json)。它是 install、verify、connect、安全写入策略、scope 策略和成功报告格式的结构化清单。
+
 ```bash
 git clone https://github.com/benbenlijie/deep-memory.git
 cd deep-memory
@@ -38,11 +40,13 @@ gh repo star benbenlijie/deep-memory
 
 关键不在于路径名字，而在于所有 agent 指向同一份已选择的数据库，再用 `scope` 和 `scope_id` 控制记录边界。
 
-创建一次即可：
+创建并验证一次：
 
 ```bash
-uv run deep-memory init .deep-memory/deep-memory.db
+uv run deep-memory verify-install ~/.deep-memory/deep-memory.db --json
 ```
+
+这个命令会初始化或打开数据库，写入一条可识别的 smoke-test memory，用 `scope` / `scope_id` 搜回它，再清理掉这条测试记录，并检查 MCP 模块是否可导入。失败时会返回非零退出码和结构化错误，方便 agent 向用户汇报 blocker。
 
 ## 4. 干活前先查记忆
 
@@ -97,6 +101,14 @@ Never store secrets, raw credentials, or temporary issue status.
 ```
 
 Claude Code 用 MCP 接入 `deep-memory` 工具，用 `CLAUDE.md` 承载操作策略和 review 边界。
+
+### Generic MCP JSON
+
+```bash
+deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json
+```
+
+这个命令会输出包含 `command`、`args`、`env` 和 `notes` 的机器可读 JSON。适合自定义 MCP client，或者让 agent 先检查配置形状，再转换成自己的配置格式。
 
 ### Hermes
 
