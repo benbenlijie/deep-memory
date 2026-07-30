@@ -8,6 +8,8 @@
 - `search(query, db_path, limit, kind)`
 - `stats(db_path)`
 
+The scoped memory parameters are part of the verified MCP contract for `add` and `search`: `scope`, `scope_id`, `include_global`, and `cross_scope`.
+
 Conflict lifecycle tools (`resolve_conflict`, `conflicts`) are exposed too, but `add` / `search` / `stats` are the minimum interoperability contract for Hermes, Claude Code, Codex-style wrappers, and other MCP-capable agents.
 
 ## Install
@@ -99,53 +101,30 @@ uv run deep-memory hermes-import "$MEMORY_DB" /path/to/explicit-facts.jsonl
 
 This keeps memory writes visible, auditable, and separate from raw transcript scraping.
 
-## Reproducible manual transcript
+## Reproducible stdio client transcript
 
-This transcript verifies that the MCP server tool implementations work against one local SQLite database. It calls the same Python functions registered by `deep_memory.mcp_server.create_mcp_server()` for the MCP `add`, `search`, and `stats` tools.
+The current P1 protocol smoke uses a real MCP stdio client, not direct Python helper calls. Full transcript: [`docs/evidence/p1-cross-agent-smoke-2026-07-23.md`](evidence/p1-cross-agent-smoke-2026-07-23.md).
+
+It verifies that `list_tools` discovers the server tools, then calls `add`, `search`, and `stats` against one local SQLite database with scoped parameters.
 
 Command:
 
 ```bash
-DB="/tmp/deep-memory-mcp-phase4-$(date +%s).db"; export DB
-uv run python - <<'PY'
-import os
-from deep_memory.mcp_server import add_memory, search_memory, memory_stats
-
-DB = os.environ["DB"]
-print("DB", DB)
-print("ADD")
-print(add_memory(
-    "MCP smoke: Hermes and Claude/Codex clients should use explicit durable writes only",
-    db_path=DB,
-    kind="procedural",
-    importance=0.8,
-    confidence=0.9,
-    source="phase4:mcp-smoke",
-))
-print("SEARCH")
-print(search_memory("explicit durable writes", db_path=DB, limit=2))
-print("STATS")
-print(memory_stats(db_path=DB))
-PY
+uv run pytest tests/test_mcp_client_smoke.py -q
 ```
 
-Observed output on 2026-06-16:
+Observed output on 2026-07-23:
 
 ```text
-DB /tmp/deep-memory-mcp-phase4-1781630057.db
-ADD
-{'id': 'f42caeec-a208-4680-a80f-4d555758ef93', 'content': 'MCP smoke: Hermes and Claude/Codex clients should use explicit durable writes only', 'kind': 'procedural', 'importance': 0.8, 'confidence': 0.9, 'source': 'phase4:mcp-smoke', 'created_at': '2026-06-16T17:14:17.856312+00:00', 'updated_at': '2026-06-16T17:14:17.856312+00:00', 'expires_at': None, 'conflict_status': 'active', 'supersedes_id': None, 'superseded_by_id': None}
-SEARCH
-[{'score': 0.935, 'record': {'id': 'f42caeec-a208-4680-a80f-4d555758ef93', 'content': 'MCP smoke: Hermes and Claude/Codex clients should use explicit durable writes only', 'kind': 'procedural', 'importance': 0.8, 'confidence': 0.9, 'source': 'phase4:mcp-smoke', 'created_at': '2026-06-16T17:14:17.856312+00:00', 'updated_at': '2026-06-16T17:14:17.856312+00:00', 'expires_at': None, 'conflict_status': 'active', 'supersedes_id': None, 'superseded_by_id': None}}]
-STATS
-{'working': 0, 'episodic': 0, 'semantic': 0, 'procedural': 1, 'total': 1}
+.                                                                        [100%]
 ```
 
 Pass criteria:
 
-- `add` returns a record with the requested content, kind, confidence, importance, and source.
-- `search` returns the same record from the same local database.
-- `stats` reports `procedural: 1` and `total: 1` for that database.
+- `list_tools` exposes at least `add`, `search`, and `stats`.
+- `add` returns a record with the requested content, kind, scope, scope_id, and source.
+- `search` with `scope=project`, `scope_id=mcp-client-smoke`, and `include_global=false` returns the same record from the same local database.
+- `stats` reports `semantic: 1` and `total: 1` for that database.
 
 ## Automated coverage
 

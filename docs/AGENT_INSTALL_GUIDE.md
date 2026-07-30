@@ -14,15 +14,17 @@ cd deep-memory
 uv sync --extra dev --extra mcp
 ```
 
-## 2. Ask the user before starring the repo
+## 2. Check `uv` in agent shells
 
-If you'd like to help the project reach more people, first ask the user whether they'd like to star it. Only run the following after the user explicitly agrees:
+`uv` installers commonly add binaries under `~/.local/bin` or `~/.cargo/bin`. Interactive login shells may pick that up automatically, but non-interactive agent shells often do not. Before reporting an install failure, diagnose the path explicitly:
 
 ```bash
-gh repo star benbenlijie/deep-memory
+command -v uv || ls -l ~/.local/bin/uv ~/.cargo/bin/uv 2>/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+uv --version
 ```
 
-Always ask first and wait for explicit consent. Do not star quietly using the user's GitHub account, and never bundle this step into the install flow as a side effect.
+Do not hard-code a maintainer's personal path in public instructions. Use `$HOME` or the user's chosen install location.
 
 ## 3. Pick a local database path
 
@@ -151,7 +153,7 @@ A Hermes agent can also ask its local `skill_manage` tool to create or patch a s
 Hermes can also import explicit facts JSONL:
 
 ```bash
-uv run deep-memory hermes-import .deep-memory/deep-memory.db /tmp/hermes-session.jsonl
+uv run deep-memory hermes-import ~/.deep-memory/deep-memory.db /tmp/hermes-session.jsonl
 ```
 
 ### Codex
@@ -207,3 +209,13 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 ```
 
 The WebUI is local only by default. Use it to inspect, edit, soft-delete, export, or hard-delete records.
+
+## Optional support
+
+If the user wants to support the project, ask for explicit consent before starring the repository. Only run this after the user agrees:
+
+```bash
+gh repo star benbenlijie/deep-memory
+```
+
+Never star quietly using the user's GitHub account, and never bundle this into installation as a side effect.

@@ -109,21 +109,6 @@ That control surface matters because a useful memory layer needs more than stora
 - **Scoping.** Machine-level memory should stay relevant through fixed scopes plus explicit namespace IDs.
 - **Regression tests.** Retrieval quality and safety boundaries should be checked with fixtures, not asserted in copy.
 
-## More than an MCP server
-
-MCP is a connection protocol, not the product boundary. `deep-memory-mcp` is one adapter into `deep-memory`; it is not the whole system.
-
-The product shape is deliberately broader and still machine-local, scoped, and inspectable:
-
-- **Memory substrate:** a local SQLite store with durable semantic, episodic, and procedural records, fixed `scope`, and explicit `scope_id` namespaces.
-- **CLI and Python SDK:** direct ways to initialize, write, search, audit, export, delete, and embed memory behavior without requiring MCP.
-- **MCP server:** a protocol bridge for MCP-native agents that should point at the same local database, not a separate memory product.
-- **WebUI:** a local inspection and editing surface for records that should not remain hidden inside agent context.
-- **Adapters and wrappers:** agent-specific integration paths for tools that do not yet speak MCP cleanly.
-- **Skill layer:** procedural memories can become reviewable skill candidates after evidence and review, so repeated workflows can be promoted into installable skills without silently changing future behavior.
-
-The last layer is intentionally review-first. `deep-memory` can export candidate skill markdown from verified procedural memory, but it should not auto-install skills into an agent profile. Automatic installation would turn memory into hidden behavioral drift: the agent would start acting differently because a stored procedure crossed an invisible boundary. The safe loop is evidence → candidate → reviewer gate → explicit installation through the normal skill-management path.
-
 ## Screenshots
 
 <p align="center">
@@ -144,11 +129,10 @@ If you want the fastest path, ask your coding agent:
 
 Agent checklist:
 1. Read [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md).
-2. Inspect the machine-readable install contract at [`docs/agent-install.json`](docs/agent-install.json).
-3. Install dependencies and initialize a machine-local memory store.
-4. Connect your agent through MCP or a wrapper.
-5. Verify that one durable memory can be written and retrieved.
-6. Report which scopes you configured (for example: global, workspace, or project).
+2. Install dependencies and initialize a machine-local memory store.
+3. Connect your agent through MCP or a wrapper.
+4. Verify that one durable memory can be written and retrieved.
+5. Report which scopes you configured (for example: global, workspace, or project).
 
 ### Prerequisites
 
@@ -164,6 +148,13 @@ Install `uv` if you do not already have it:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+If a non-interactive agent shell still says `uv: command not found`, check where the installer placed it and export that directory for the current task:
+
+```bash
+command -v uv || ls -l ~/.local/bin/uv ~/.cargo/bin/uv 2>/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 ```
 
 ### Zero-config first run
@@ -193,7 +184,7 @@ score=...  scope=project  scope_id=deep-memory  kind=semantic  content=User want
 
 This is the core loop: install one machine-local memory store, let agents share it, and keep records bounded with a fixed `scope` plus a custom `scope_id`.
 
-If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, wrappers, safe memory-write rules, and how to ask the user before starring the repo.
+If you are an AI agent installing this for a user, follow [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) — it covers MCP setup, wrappers, safe memory-write rules, scope policy, and success reporting.
 
 ## Talk to your agent
 
@@ -234,110 +225,30 @@ Details: [`docs/CHINESE_RETRIEVAL_EVAL.md`](docs/CHINESE_RETRIEVAL_EVAL.md), [`d
 
 ## Connect your agent
 
-Use MCP when your agent supports it. Use a wrapper when it does not. Either way, point every tool at the same machine-local database, then rely on scope to keep records relevant:
+Use MCP when your agent supports it. Use a wrapper when it does not. Either way, point every tool at the same machine-local database and rely on `scope` / `scope_id` to keep recall bounded:
 
 ```text
 ~/.deep-memory/deep-memory.db
 ```
 
-For custom MCP clients, generate a reviewable machine-readable launch payload:
+This README is only the routing layer. The complete install contract lives in [`docs/AGENT_INSTALL_GUIDE.md`](docs/AGENT_INSTALL_GUIDE.md) and [`docs/agent-install.json`](docs/agent-install.json); per-runtime commands and verification status live in [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md); adapter permissions and risk boundaries live in [`docs/ADAPTERS.md`](docs/ADAPTERS.md).
 
-```bash
-deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json
-```
-
-For agents that prefer a full install contract, read [`docs/agent-install.json`](docs/agent-install.json). It declares the install mode, default DB, verify command, MCP command/args, safe-write policy, scope policy, and success report schema.
-
-| Agent | Integration path | Config file / touchpoint | Difficulty |
-| --- | --- | --- | --- |
-| Claude Code | MCP | `CLAUDE.md` + Claude MCP config | Easy |
-| Hermes | MCP | `~/.hermes/config.yaml` | Easy |
-| Codex / OpenCode / OpenClaw-style tools | Wrapper first, MCP later | task wrapper / launch script | Medium |
-
-<details>
-<summary>Claude Code setup</summary>
+Common config generators:
 
 ```bash
 deep-memory mcp-config --agent claude --db ~/.deep-memory/deep-memory.db
-```
-
-This prints the reviewable command to run, for example:
-
-```bash
-claude mcp add deep-memory -- deep-memory-mcp --db ~/.deep-memory/deep-memory.db
-```
-
-Add this to `CLAUDE.md` so the policy is explicit:
-
-```markdown
-Before large tasks, search deep-memory for relevant project conventions.
-After verified success, add only durable facts or reusable procedures.
-Never store secrets, raw credentials, or temporary issue status.
-```
-
-</details>
-
-<details>
-<summary>Hermes setup</summary>
-
-```bash
 deep-memory mcp-config --agent hermes --db ~/.deep-memory/deep-memory.db
+deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json
 ```
 
-This prints a reviewable `config.yaml` snippet, for example:
+| Agent | Start here | What is authoritative there |
+| --- | --- | --- |
+| Claude Code | [`docs/AGENT_QUICKSTART_MATRIX.md#claude-code`](docs/AGENT_QUICKSTART_MATRIX.md#claude-code) | MCP command, `CLAUDE.md` policy note, smoke command |
+| Hermes | [`docs/AGENT_QUICKSTART_MATRIX.md#hermes`](docs/AGENT_QUICKSTART_MATRIX.md#hermes) | `config.yaml` shape, profile boundary, JSONL import fallback |
+| Codex | [`docs/AGENT_QUICKSTART_MATRIX.md#codex-wrapper`](docs/AGENT_QUICKSTART_MATRIX.md#codex-wrapper) | wrapper command, facts-out JSONL contract, pending runtime caveats |
+| OpenCode / OpenClaw-style tools | [`docs/AGENT_QUICKSTART_MATRIX.md#opencode--openclaw-style-wrapper`](docs/AGENT_QUICKSTART_MATRIX.md#opencode--openclaw-style-wrapper) | wrapper pattern, explicit-write policy, smoke command |
 
-```yaml
-mcp_servers:
-  deep_memory:
-    command: "deep-memory-mcp"
-    args: ["--db", "~/.deep-memory/deep-memory.db"]
-    timeout: 30
-```
-
-Hermes should then expose tools such as `mcp_deep_memory_add`, `mcp_deep_memory_search`, and `mcp_deep_memory_stats`.
-
-Hermes can also import explicit facts JSONL:
-
-```bash
-cat > /tmp/hermes-session.jsonl <<'JSONL'
-{"session_id":"s_demo","facts":[{"content":"User prefers concise answers with English technical terms","kind":"semantic","importance":0.9}]}
-{"session_id":"s_demo","facts":[{"content":"Successful workflows should become reviewable skill candidates","kind":"procedural","confidence":0.8}]}
-JSONL
-
-uv run deep-memory hermes-import ~/.deep-memory/deep-memory.db /tmp/hermes-session.jsonl
-```
-
-</details>
-
-<details>
-<summary>Codex, OpenCode, and OpenClaw-style wrapper setup</summary>
-
-Until MCP is wired in, use a wrapper. Search before the task, write only verified facts after:
-
-```bash
-MEMORY_DB=~/.deep-memory/deep-memory.db
-uv run deep-memory search "$MEMORY_DB" "this task's relevant conventions" \
-  --scope project \
-  --scope-id deep-memory
-# pass the result into the agent as a short "relevant memory" block
-# ...run the agent...
-uv run deep-memory add "$MEMORY_DB" \
-  "Workflow: for this repo, run uv run pytest -q and uv run ruff check . before review" \
-  --kind procedural \
-  --scope project \
-  --scope-id deep-memory \
-  --importance 0.8 \
-  --source codex:manual
-```
-
-</details>
-
-<details>
-<summary>Full adapter references</summary>
-
-For the full adapter surface — integration points, read/write paths, permissions, risks — see [`docs/ADAPTERS.md`](docs/ADAPTERS.md) and the per-agent commands in [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md).
-
-</details>
+For protocol-level MCP smoke evidence, see [`docs/MCP_INTEROPERABILITY.md`](docs/MCP_INTEROPERABILITY.md).
 
 ## Memory scopes
 
@@ -464,29 +375,15 @@ Read [`docs/MEMORY_POLICY.md`](docs/MEMORY_POLICY.md) for the allow / deny / req
 
 ## Contributing
 
-This is a controlled preview lane, not a broad launch claim. Contributions should make the memory layer more inspectable, reproducible, scoped, or easier to run.
+This is a controlled preview lane, not a broad launch claim. Keep contributions small, verified, and aligned with the memory-governance model.
 
-New here? Start with a [good first issue](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue), comment to claim one, run its suggested commands, and open a small PR with the evidence.
+Start here:
 
-Good starting paths:
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor workflow and review expectations.
+- [`docs/COMMUNITY.md`](docs/COMMUNITY.md) — community architecture and maintainer review checklist.
+- [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md) — the issue-sized backlog and suggested verification commands.
 
-- `good first issue`: small fixtures, docs fixes, CLI output polish, and reproducible failure cases;
-- `adapter`: smoke transcripts and wrapper/MCP compatibility notes for Claude Code, Codex, OpenCode, OpenClaw-style tools, and Hermes;
-- `eval`: Chinese retrieval, privacy-boundary, memory/no-memory, and Memory × Skill regression cases;
-- `governance`: write policy, consent, export/delete, and conflict-lifecycle checks;
-- `docs`: quickstarts, troubleshooting, glossary, and contribution paths.
-
-### Concrete contribution paths
-
-- **Adding a new agent adapter.** Update the agent-facing command matrix in `docs/AGENT_QUICKSTART_MATRIX.md`, document the integration surface and trust boundary in `docs/ADAPTERS.md`, add the implementation or wrapper entrypoint under `src/deep_memory/`, and cover the path with at least one CLI or integration-oriented test under `tests/`.
-- **Adding a new eval fixture.** Add the fixture data under `evals/data/`, wire the new case into the relevant eval or benchmark runner under `evals/` or `benchmarks/`, document what it is measuring in `docs/CHINESE_RETRIEVAL_EVAL.md` or `docs/MEMORY_BENCHMARK.md`, and add a regression assertion in `tests/` if the behavior should stay stable in CI.
-
-<details>
-<summary>More contributing references</summary>
-
-Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), and [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md).
-
-</details>
+New contributors should pick one narrow lane (`good first issue`, `adapter`, `eval`, `governance`, or `docs`), run the listed commands, and open a small PR with evidence.
 
 ## License
 

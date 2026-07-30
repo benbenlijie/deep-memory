@@ -3,10 +3,14 @@
   "default_db": "~/.deep-memory/deep-memory.db",
   "install": {
     "source": {
-      "command": "git clone https://github.com/benbenlijie/deep-memory.git && cd deep-memory && uv sync --extra mcp"
+      "command": "git clone https://github.com/benbenlijie/deep-memory.git && cd deep-memory && uv sync --extra dev --extra mcp"
     },
     "package": {
       "command": "uv tool install deep-memory[mcp]"
+    },
+    "uv_path_diagnostic": {
+      "command": "command -v uv || ls -l ~/.local/bin/uv ~/.cargo/bin/uv 2>/dev/null",
+      "non_interactive_shell_fix": "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\""
     }
   },
   "verify": {
