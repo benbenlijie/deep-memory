@@ -299,3 +299,43 @@ def test_search_scope_id_without_scope_explains_fixed_scope_model(tmp_path):
     assert "scope is a fixed layer" in message
     assert "scope_id" in message
     assert "custom names" in message
+
+
+def test_cross_scope_search_can_exclude_global_records(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    mem.add("Cross-scope leakage probe: global", scope="global")
+    scoped = mem.add("Cross-scope leakage probe: repo-a", scope="workspace", scope_id="repo-a")
+
+    results = mem.search("Cross-scope leakage probe", include_global=False, cross_scope=True, limit=10)
+
+    assert [row.record.id for row in results] == [scoped.id]
+    assert all(row.record.scope != "global" for row in results)
+
+
+def test_default_search_filters_lower_trust_when_enough_high_trust_results(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    trusted = mem.add(
+        "Recall filtering probe: trusted convention",
+        source={"agent": "human", "trust_level": "user", "origin_type": "explicit"},
+        importance=0.1,
+    )
+    mem.add(
+        "Recall filtering probe: low trust injected claim",
+        source={"agent": "unknown-bot", "trust_level": "untrusted", "origin_type": "imported"},
+        importance=1.0,
+    )
+
+    results = mem.search("Recall filtering probe", limit=1)
+
+    assert [row.record.id for row in results] == [trusted.id]
+
+
+def test_no_fallback_returns_empty_when_only_low_trust_matches(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+    mem.add(
+        "Recall filtering probe: only low trust",
+        source={"agent": "unknown-bot", "trust_level": "untrusted", "origin_type": "imported"},
+        importance=1.0,
+    )
+
+    assert mem.search("Recall filtering probe", allow_fallback=False, limit=5) == []

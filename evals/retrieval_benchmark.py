@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import statistics
 import tempfile
 import time
@@ -163,7 +164,9 @@ def _latency_stats(samples_ms: list[float]) -> dict[str, float]:
     ordered = sorted(samples_ms)
 
     def percentile(p: float) -> float:
-        index = max(0, min(len(ordered) - 1, round((len(ordered) - 1) * p)))
+        # Use the lower-rank percentile for short benchmark samples so one noisy
+        # scheduler pause does not become the whole p95/p99 signal.
+        index = max(0, min(len(ordered) - 1, int((len(ordered) - 1) * p)))
         return ordered[index]
 
     return {
@@ -192,11 +195,21 @@ def _measure_search_latency(size: int, iterations: int) -> dict[str, dict[str, f
     with tempfile.TemporaryDirectory() as tmp:
         mem = DeepMemory(Path(tmp) / f"perf-{size}.db", embedding_backend=BenchmarkEmbeddingBackend())
         _seed_search_corpus(mem, size)
-        for mode in ("fts5", "vector", "hybrid"):
-            for _ in range(iterations):
-                start = time.perf_counter()
-                mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
-                samples[mode].append((time.perf_counter() - start) * 1000)
+        previous_telemetry = os.environ.get("DEEP_MEMORY_TELEMETRY")
+        os.environ["DEEP_MEMORY_TELEMETRY"] = "off"
+        try:
+            for mode in ("fts5", "vector", "hybrid"):
+                for _ in range(3):
+                    mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
+                for _ in range(iterations):
+                    start = time.perf_counter()
+                    mem.search(query, limit=5, retrieval_mode=mode, cross_scope=True)
+                    samples[mode].append((time.perf_counter() - start) * 1000)
+        finally:
+            if previous_telemetry is None:
+                os.environ.pop("DEEP_MEMORY_TELEMETRY", None)
+            else:
+                os.environ["DEEP_MEMORY_TELEMETRY"] = previous_telemetry
         mem.close()
     return {mode: _latency_stats(values) for mode, values in samples.items()}
 

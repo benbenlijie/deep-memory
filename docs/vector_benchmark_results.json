@@ -122,62 +122,88 @@
     "search_latency": {
       "1000": {
         "fts5": {
-          "p50_ms": 10.823,
-          "p95_ms": 12.768,
-          "p99_ms": 12.768,
-          "mean_ms": 11.43
+          "p50_ms": 9.703,
+          "p95_ms": 10.354,
+          "p99_ms": 10.354,
+          "mean_ms": 9.777
         },
         "vector": {
-          "p50_ms": 30.854,
-          "p95_ms": 32.131,
-          "p99_ms": 32.131,
-          "mean_ms": 30.604
+          "p50_ms": 21.803,
+          "p95_ms": 23.964,
+          "p99_ms": 23.964,
+          "mean_ms": 22.065
         },
         "hybrid": {
-          "p50_ms": 31.018,
-          "p95_ms": 32.623,
-          "p99_ms": 32.623,
-          "mean_ms": 31.386
+          "p50_ms": 22.818,
+          "p95_ms": 25.595,
+          "p99_ms": 25.595,
+          "mean_ms": 23.176
         }
       },
       "10000": {
         "fts5": {
-          "p50_ms": 21.056,
-          "p95_ms": 22.817,
-          "p99_ms": 22.817,
-          "mean_ms": 20.613
+          "p50_ms": 20.003,
+          "p95_ms": 24.057,
+          "p99_ms": 24.057,
+          "mean_ms": 20.475
         },
         "vector": {
-          "p50_ms": 218.505,
-          "p95_ms": 228.633,
-          "p99_ms": 228.633,
-          "mean_ms": 220.276
+          "p50_ms": 149.366,
+          "p95_ms": 174.344,
+          "p99_ms": 174.344,
+          "mean_ms": 152.298
         },
         "hybrid": {
-          "p50_ms": 223.2,
-          "p95_ms": 235.447,
-          "p99_ms": 235.447,
-          "mean_ms": 223.219
+          "p50_ms": 147.919,
+          "p95_ms": 152.94,
+          "p99_ms": 152.94,
+          "mean_ms": 148.563
+        }
+      },
+      "50000": {
+        "fts5": {
+          "p50_ms": 19.993,
+          "p95_ms": 25.239,
+          "p99_ms": 25.239,
+          "mean_ms": 20.568
+        },
+        "vector": {
+          "p50_ms": 699.03,
+          "p95_ms": 722.315,
+          "p99_ms": 722.315,
+          "mean_ms": 700.802
+        },
+        "hybrid": {
+          "p50_ms": 702.513,
+          "p95_ms": 715.739,
+          "p99_ms": 715.739,
+          "mean_ms": 703.278
         }
       }
     },
     "embedding_latency": {
-      "per_text_ms": 0.037,
-      "batch_64_ms": 0.401,
+      "per_text_ms": 0.045,
+      "batch_64_ms": 0.4,
       "batch_per_text_ms": 0.006
     },
     "memory_usage": {
       "1000": {
-        "db_bytes": 843776,
+        "db_bytes": 819200,
         "embedding_rows": 1000,
         "embedding_blob_bytes": 48000,
         "vector_overhead_bytes": 48000
       },
       "10000": {
-        "db_bytes": 7393280,
+        "db_bytes": 7294976,
         "embedding_rows": 10000,
         "embedding_blob_bytes": 480000,
         "vector_overhead_bytes": 480000
+      },
+      "50000": {
+        "db_bytes": 35889152,
+        "embedding_rows": 50000,
+        "embedding_blob_bytes": 2400000,
+        "vector_overhead_bytes": 2400000
       }
     }
   }

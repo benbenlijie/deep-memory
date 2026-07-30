@@ -150,3 +150,36 @@ def test_mcp_scope_promotion_is_exposed_through_python_api(tmp_path, monkeypatch
         assert promoted.scope_id is None
     finally:
         mem.close()
+
+
+def test_mcp_invalid_kind_and_scope_params_raise_actionable_errors(tmp_path):
+    db = tmp_path / "memory.db"
+
+    try:
+        add_memory(db_path=str(db), content="Invalid kind should fail", kind="memo")  # type: ignore[arg-type]
+    except ValueError as exc:
+        assert "unsupported memory kind" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("invalid kind should be rejected")
+
+    try:
+        add_memory(db_path=str(db), content="Global must not carry scope_id", scope="global", scope_id="repo")
+    except ValueError as exc:
+        assert "global scope must not set scope_id" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("global scope_id should be rejected")
+
+    assert memory_stats(db_path=str(db))["total"] == 0
+
+
+def test_mcp_search_empty_query_and_invalid_limit_do_not_log_retrievals(tmp_path):
+    db = tmp_path / "memory.db"
+    add_memory(db_path=str(db), content="MCP validation fact", scope="workspace", scope_id="repo")
+
+    assert search_memory(db_path=str(db), query="   ") == []
+    try:
+        search_memory(db_path=str(db), query="MCP validation", limit=-1)
+    except ValueError as exc:
+        assert "limit must be positive" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("negative limit should be rejected")

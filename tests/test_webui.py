@@ -62,3 +62,45 @@ def test_webui_renders_accessible_local_inspector(tmp_path):
     assert "用户偏好：中文为主" in html
     assert "method=\"post\"" in html
     assert "aria-label=\"Search memories\"" in html
+
+
+def test_webui_update_refuses_secret_content_without_modifying_existing_record(tmp_path):
+    db = tmp_path / "memory.db"
+    mem = DeepMemory(db)
+    record = mem.add("用户偏好：中文为主", kind="semantic")
+
+    try:
+        update_memory(
+            db,
+            record.id,
+            content="API key: sk-live1234567890",
+            kind="semantic",
+            importance=0.8,
+            confidence=0.9,
+            source="webui:test",
+        )
+    except ValueError as exc:
+        assert "secrets/credentials" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("WebUI edits must enforce memory write policy")
+
+    assert mem.get(record.id).content == "用户偏好：中文为主"
+
+
+def test_webui_update_unknown_record_raises_without_silent_success(tmp_path):
+    db = tmp_path / "memory.db"
+    DeepMemory(db).close()
+
+    try:
+        update_memory(
+            db,
+            "missing-id",
+            content="用户偏好：中文为主",
+            kind="semantic",
+            importance=0.8,
+            confidence=0.9,
+        )
+    except KeyError as exc:
+        assert "missing-id" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("unknown WebUI update should fail")

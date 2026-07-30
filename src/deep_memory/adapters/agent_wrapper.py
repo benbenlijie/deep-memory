@@ -94,10 +94,11 @@ def import_agent_facts(
     agent_name: str,
     scope_id: str | None = None,
 ) -> list[MemoryRecord]:
+    facts = list(iter_agent_facts(facts_jsonl, agent_name=agent_name))
     memory = DeepMemory(db)
     records: list[MemoryRecord] = []
     try:
-        for fact in iter_agent_facts(facts_jsonl, agent_name=agent_name):
+        for fact in facts:
             records.append(
                 memory.add(
                     fact["content"],

@@ -56,3 +56,21 @@ def test_memory_policy_allows_verified_procedural_fact(tmp_path):
 
     assert record.kind == "procedural"
     assert mem.stats()["procedural"] == 1
+
+
+def test_memory_policy_allows_non_secret_words_that_only_contain_secret_substrings(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+
+    record = mem.add("Project convention: use passwordless SSH and secretless local fixtures")
+
+    assert record.content == "Project convention: use passwordless SSH and secretless local fixtures"
+    assert mem.stats()["total"] == 1
+
+
+def test_memory_policy_denies_common_provider_tokens_without_label(tmp_path):
+    mem = DeepMemory(tmp_path / "memory.db")
+
+    with pytest.raises(ValueError, match="secrets/credentials"):
+        mem.add("Leaked Slack bot token " + "xox" + "b-12345678901234567890-uvwx")
+
+    assert mem.stats()["total"] == 0

@@ -57,10 +57,11 @@ def write_hermes_session_facts(
 ) -> list[MemoryRecord]:
     """Import explicit Hermes session facts into a deep-memory database."""
 
+    facts = list(iter_hermes_facts(session_jsonl))
     memory = DeepMemory(db)
     records: list[MemoryRecord] = []
     try:
-        for fact in iter_hermes_facts(session_jsonl):
+        for fact in facts:
             records.append(
                 memory.add(
                     fact.content,
