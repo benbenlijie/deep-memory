@@ -14,7 +14,10 @@ def test_agent_install_manifest_is_machine_readable_and_complete():
     assert payload["name"] == "deep-memory"
     assert payload["default_db"] == "~/.deep-memory/deep-memory.db"
     assert payload["install"]["source"]["command"]
+    assert "--extra dev --extra mcp" in payload["install"]["source"]["command"]
     assert payload["install"]["package"]["command"]
+    assert "command -v uv" in payload["install"]["uv_path_diagnostic"]["command"]
+    assert "$HOME/.local/bin" in payload["install"]["uv_path_diagnostic"]["non_interactive_shell_fix"]
     assert payload["verify"]["command"] == "deep-memory verify-install ~/.deep-memory/deep-memory.db --json"
     assert payload["connect"]["mcp"]["command"] == "deep-memory-mcp"
     assert payload["connect"]["mcp"]["args"] == ["--db", "~/.deep-memory/deep-memory.db"]

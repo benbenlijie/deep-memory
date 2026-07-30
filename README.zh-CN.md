@@ -109,21 +109,6 @@ Agent 在依赖记忆之前，先走一条很短的治理路径：
 - **作用域控制（Scoping）。** 全机级记忆必须通过固定 scope 与显式 scope_id 保持相关性。
 - **回归测试（Regression tests）。** 检索质量和安全边界应该用 fixture 持续检查，而不是靠文案断言。
 
-## 不只是一个 MCP server
-
-MCP 是连接协议，不是产品本体。`deep-memory-mcp` 只是接入 `deep-memory` 的一个 adapter，不是整个系统。
-
-`deep-memory` 的交付形态刻意更完整，同时仍然保持 machine-local、scoped、inspectable：
-
-- **Memory substrate：** 本地 SQLite 存储 durable semantic、episodic、procedural records，用固定 `scope` 和显式 `scope_id` 约束命名空间。
-- **CLI 与 Python SDK：** 不依赖 MCP，也可以初始化、写入、检索、审计、导出、删除，并把 memory behavior 嵌入到工具里。
-- **MCP server：** 给 MCP-native agents 使用的协议桥，应该指向同一份本地数据库，而不是另一套独立记忆产品。
-- **WebUI：** 本地检查与编辑界面，让记录不要藏在 Agent context 里不可见。
-- **Adapters 与 wrappers：** 给暂时还不能干净接 MCP 的工具提供 agent-specific 集成路径。
-- **Skill layer：** procedural memory 经过 evidence 和 review 后，可以导出为可审查 skill candidate，让可复用工作流被显式提升为可安装 skill，而不是悄悄改变未来行为。
-
-最后这一层必须保持 review-first。`deep-memory` 可以从已验证的 procedural memory 导出 candidate skill markdown，但不应该自动安装到 Agent profile。自动安装会把 memory 变成 hidden behavioral drift：Agent 因为某条存储过程跨过了不可见边界，而开始悄悄改变行为。安全的 loop 是 evidence → candidate → reviewer gate → 通过正常 skill-management 路径显式安装。
-
 ## 截图
 
 <p align="center">
@@ -144,10 +129,11 @@ MCP 是连接协议，不是产品本体。`deep-memory-mcp` 只是接入 `deep-
 
 给 Agent 的执行清单：
 1. 先读 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md)。
-2. 安装依赖并初始化一份全机本地的记忆库。
-3. 用 MCP 或 wrapper 把你自己接进去。
-4. 验证可以写入并取回一条 durable memory。
-5. 向用户说明你配置了哪些 scope（例如 global、workspace、project）。
+2. 检查机器可读安装协议 [`docs/agent-install.json`](docs/agent-install.json)。
+3. 安装依赖并初始化一份全机本地的记忆库。
+4. 用 MCP 或 wrapper 把你自己接进去。
+5. 验证可以写入并取回一条 durable memory。
+6. 向用户说明你配置了哪些 scope（例如 global、workspace、project）。
 
 ### 前置依赖
 
@@ -164,13 +150,20 @@ MCP 是连接协议，不是产品本体。`deep-memory-mcp` 只是接入 `deep-
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+如果非交互式 agent shell 仍然提示 `uv: command not found`，先检查安装位置，并把对应目录加入当前任务的 `PATH`：
+
+```bash
+command -v uv || ls -l ~/.local/bin/uv ~/.cargo/bin/uv 2>/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+```
+
 ### 零配置首跑
 
 如果你还不想先接任何 Agent，只想先验证机制，这条路径会给你一份本地 DB、一条 durable memory，以及一次检索回路：
 
 ```bash
 uv sync --extra dev --extra mcp
-uv run deep-memory init ~/.deep-memory/deep-memory.db
+uv run deep-memory verify-install ~/.deep-memory/deep-memory.db --json
 uv run deep-memory add ~/.deep-memory/deep-memory.db \
   "用户希望多个 Agent 共享 deep-memory 持久记忆" \
   --kind semantic \
@@ -191,7 +184,7 @@ score=...  scope=project  scope_id=deep-memory  kind=semantic  content=用户希
 
 这个 loop 的重点不是手工敲命令，而是：安装一份全机本地记忆库，让多个 Agent 共享，并通过固定 `scope` 与自定义 `scope_id` 保持记录有边界。
 
-如果你是 AI Agent，正在替用户安装或接入这个项目，请看 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md)。里面包含 MCP 配置、wrapper 用法、安全写入规则，以及先征求用户同意再给项目点 star 的步骤。
+如果你是 AI Agent，正在替用户安装或接入这个项目，请看 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md)。里面包含 MCP 配置、wrapper 用法、安全写入规则、scope 策略和成功报告格式。
 
 ## 直接对 Agent 说
 
@@ -232,86 +225,30 @@ score=...  scope=project  scope_id=deep-memory  kind=semantic  content=用户希
 
 ## 接入你的 Agent
 
-优先用 MCP。如果你的 Agent 暂时不好接 MCP，就用 wrapper。无论哪种方式，都指向同一个全机本地数据库，再通过 scope 保持记录相关：
+Agent 支持 MCP 时优先用 MCP；不支持时用 wrapper。无论哪条路径，都让工具指向同一份 machine-local 数据库，再用 `scope` / `scope_id` 控制召回边界：
 
 ```text
 ~/.deep-memory/deep-memory.db
 ```
 
-| Agent | 接入方式 | 配置文件 / 触点 | 难度 |
-| --- | --- | --- | --- |
-| Claude Code | MCP | `CLAUDE.md` + Claude MCP 配置 | 低 |
-| Hermes | MCP | `~/.hermes/config.yaml` | 低 |
-| Codex / OpenCode / OpenClaw 风格工具 | 先 wrapper，后 MCP | task wrapper / 启动脚本 | 中 |
+README 只负责入口路由。完整安装协议在 [`docs/AGENT_INSTALL_GUIDE.zh-CN.md`](docs/AGENT_INSTALL_GUIDE.zh-CN.md) 和 [`docs/agent-install.json`](docs/agent-install.json)；各 runtime 命令和验证状态在 [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md)；adapter 权限和风险边界在 [`docs/ADAPTERS.md`](docs/ADAPTERS.md)。
 
-<details>
-<summary>Claude Code 接入</summary>
+常用配置生成命令：
 
 ```bash
-claude mcp add deep-memory -- uv --directory /absolute/path/to/deep-memory run deep-memory-mcp
+deep-memory mcp-config --agent claude --db ~/.deep-memory/deep-memory.db
+deep-memory mcp-config --agent hermes --db ~/.deep-memory/deep-memory.db
+deep-memory mcp-config --agent generic --db ~/.deep-memory/deep-memory.db --json
 ```
 
-在 `CLAUDE.md` 里加一段，让策略显式：
+| Agent | 从这里开始 | 权威内容 |
+| --- | --- | --- |
+| Claude Code | [`docs/AGENT_QUICKSTART_MATRIX.md#claude-code`](docs/AGENT_QUICKSTART_MATRIX.md#claude-code) | MCP 命令、`CLAUDE.md` 策略、smoke 命令 |
+| Hermes | [`docs/AGENT_QUICKSTART_MATRIX.md#hermes`](docs/AGENT_QUICKSTART_MATRIX.md#hermes) | `config.yaml` 形状、profile 边界、JSONL import fallback |
+| Codex | [`docs/AGENT_QUICKSTART_MATRIX.md#codex-wrapper`](docs/AGENT_QUICKSTART_MATRIX.md#codex-wrapper) | wrapper 命令、facts-out JSONL 合同、待验证 runtime caveats |
+| OpenCode / OpenClaw 风格工具 | [`docs/AGENT_QUICKSTART_MATRIX.md#opencode--openclaw-style-wrapper`](docs/AGENT_QUICKSTART_MATRIX.md#opencode--openclaw-style-wrapper) | wrapper 模式、显式写入策略、smoke 命令 |
 
-```markdown
-Before large tasks, search deep-memory for relevant project conventions.
-After verified success, add only durable facts or reusable procedures.
-Never store secrets, raw credentials, or temporary issue status.
-```
-
-</details>
-
-<details>
-<summary>Hermes 接入</summary>
-
-```yaml
-mcp_servers:
-  deep_memory:
-    command: "uv"
-    args: ["--directory", "/absolute/path/to/deep-memory", "run", "deep-memory-mcp"]
-    timeout: 30
-```
-
-连接后通常会出现 `mcp_deep_memory_add`、`mcp_deep_memory_search`、`mcp_deep_memory_stats` 这几个工具。
-
-Hermes 也可以导入显式 facts JSONL：
-
-```bash
-cat > /tmp/hermes-session.jsonl <<'JSONL'
-{"session_id":"s_demo","facts":[{"content":"用户偏好：中文为主，技术术语用英文","kind":"semantic","importance":0.9}]}
-{"session_id":"s_demo","facts":[{"content":"成功流程应该沉淀为可审查 skill candidate","kind":"procedural","confidence":0.8}]}
-JSONL
-
-uv run deep-memory hermes-import ~/.deep-memory/deep-memory.db /tmp/hermes-session.jsonl
-```
-
-</details>
-
-<details>
-<summary>Codex、OpenCode、OpenClaw 风格工具的 wrapper 接入</summary>
-
-在 MCP 接好之前，先用 wrapper。任务开始前查，任务结束后只写经验证的事实：
-
-```bash
-MEMORY_DB=~/.deep-memory/deep-memory.db
-uv run deep-memory search "$MEMORY_DB" "这个任务相关的记忆和约定"
-# 把结果作为短的"相关记忆"塞进 Agent prompt
-# ...运行 Agent...
-uv run deep-memory add "$MEMORY_DB" \
-  "工作流：这个仓库 review 前需要运行 uv run pytest -q 和 uv run ruff check ." \
-  --kind procedural \
-  --importance 0.8 \
-  --source codex:manual
-```
-
-</details>
-
-<details>
-<summary>完整接入参考</summary>
-
-完整的接入面——集成点、读写路径、权限、风险——见 [`docs/ADAPTERS.md`](docs/ADAPTERS.md)；按 Agent 分的命令清单见 [`docs/AGENT_QUICKSTART_MATRIX.md`](docs/AGENT_QUICKSTART_MATRIX.md)。
-
-</details>
+协议级 MCP smoke 证据见 [`docs/MCP_INTEROPERABILITY.md`](docs/MCP_INTEROPERABILITY.md)。
 
 ## 记忆 scope
 
@@ -421,29 +358,15 @@ for result in mem.search("这个仓库怎么跑测试？", scope="project", scop
 
 ## 贡献
 
-当前这仍然是 controlled preview，而不是 broad launch。好的贡献应该让这层记忆更可检查、更可复现、更有边界、也更容易实际跑起来。
+当前这仍然是 controlled preview，而不是 broad launch。贡献应该小、可验证，并且不削弱 memory-governance 模型。
 
-新来的？从 [good first issue](https://github.com/benbenlijie/deep-memory/labels/good%20first%20issue) 开始，先留言认领一张小任务，跑通它列出的验证命令，再提交一个带证据的小 PR。
+从这里开始：
 
-适合开始的方向：
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — 贡献流程和 review 期望。
+- [`docs/COMMUNITY.md`](docs/COMMUNITY.md) — 社区架构和 maintainer review checklist。
+- [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md) — issue 粒度 backlog 和建议验证命令。
 
-- `good first issue`：小型 fixture、文档修复、CLI 输出打磨、可复现 failure case；
-- `adapter`：Claude Code、Codex、OpenCode、OpenClaw 风格工具、Hermes 的 smoke transcript 与 wrapper/MCP 兼容说明；
-- `eval`：中文检索、隐私边界、memory/no-memory、Memory × Skill 回归用例；
-- `governance`：写入策略、用户同意、导出/删除、冲突生命周期检查；
-- `docs`：quickstart、troubleshooting、glossary、贡献路径。
-
-### 具体贡献路径
-
-- **新增一个 Agent adapter。** 更新 `docs/AGENT_QUICKSTART_MATRIX.md` 里的 Agent 命令矩阵，在 `docs/ADAPTERS.md` 补清集成面与 trust boundary，在 `src/deep_memory/` 下加入实现或 wrapper 入口，并至少在 `tests/` 下补一条 CLI 或集成导向的覆盖。
-- **新增一个 eval fixture。** 把 fixture 数据放进 `evals/data/`，在 `evals/` 或 `benchmarks/` 里接入对应 runner，在 `docs/CHINESE_RETRIEVAL_EVAL.md` 或 `docs/MEMORY_BENCHMARK.md` 说明它测量什么；如果该行为应该在 CI 中稳定存在，再在 `tests/` 里补回归断言。
-
-<details>
-<summary>更多贡献参考</summary>
-
-开 PR 前建议先读 [`CONTRIBUTING.md`](CONTRIBUTING.md)、[`docs/COMMUNITY.md`](docs/COMMUNITY.md) 和 [`docs/NEXT_PHASE_BACKLOG.md`](docs/NEXT_PHASE_BACKLOG.md)。
-
-</details>
+新贡献者请选择一个窄 lane（`good first issue`、`adapter`、`eval`、`governance` 或 `docs`），跑完对应命令，再提交一个带证据的小 PR。
 
 ## License
 

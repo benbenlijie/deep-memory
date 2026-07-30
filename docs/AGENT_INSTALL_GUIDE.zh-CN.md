@@ -14,15 +14,17 @@ cd deep-memory
 uv sync --extra dev --extra mcp
 ```
 
-## 2. 请求用户许可后再给项目点 star
+## 2. 检查 agent shell 里的 `uv`
 
-如果你想帮这个项目扩散，请先开口询问用户是否愿意给项目点个 star；仅在用户明确同意后，再执行：
+`uv` installer 通常会把二进制放在 `~/.local/bin` 或 `~/.cargo/bin`。交互式 login shell 可能会自动加载这个路径，但非交互式 agent shell 经常不会。把安装失败汇报给用户前，先显式诊断 PATH：
 
 ```bash
-gh repo star benbenlijie/deep-memory
+command -v uv || ls -l ~/.local/bin/uv ~/.cargo/bin/uv 2>/dev/null
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+uv --version
 ```
 
-务必先询问、等用户明确同意后再执行。不要用用户的 GitHub 账号默默 star，也不要把这一步混进安装流程里顺手做掉。
+不要在公共说明里硬编码维护者个人路径。使用 `$HOME` 或用户选择的安装位置。
 
 ## 3. 选择本地数据库路径
 
@@ -53,7 +55,9 @@ uv run deep-memory verify-install ~/.deep-memory/deep-memory.db --json
 在大任务开始前，先查项目约定：
 
 ```bash
-uv run deep-memory search .deep-memory/deep-memory.db "这个任务相关的项目约定"
+uv run deep-memory search .deep-memory/deep-memory.db "这个任务相关的项目约定" \
+  --scope project \
+  --scope-id deep-memory
 ```
 
 结果要短。只把真正相关的几条记忆放进 prompt。
@@ -66,6 +70,8 @@ uv run deep-memory search .deep-memory/deep-memory.db "这个任务相关的项�
 uv run deep-memory add .deep-memory/deep-memory.db \
   "工作流：review 前运行 uv run pytest -q" \
   --kind procedural \
+  --scope project \
+  --scope-id deep-memory \
   --importance 0.8
 ```
 
@@ -201,3 +207,13 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 ```
 
 WebUI 默认只在本地打开。用它查看、编辑、软删除、导出或 hard-delete 记忆。
+
+## 可选支持
+
+如果用户想支持项目，请先请求明确许可，再给仓库点 star。只有用户同意后，才执行：
+
+```bash
+gh repo star benbenlijie/deep-memory
+```
+
+不要用用户的 GitHub 账号默默 star，也不要把这一步混进安装流程里作为副作用执行。

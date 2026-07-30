@@ -44,10 +44,7 @@ New contributors should start from the live [`good first issue` list](https://gi
 
 ## Suggested backlog
 
-The issue-sized backlog now lives in [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md).
-Keep this document focused on community architecture and contribution paths;
-keep the backlog document focused on concrete tasks, acceptance criteria, and
-verification commands.
+The issue-sized backlog lives in [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md). Keep this document focused on community architecture and contribution paths; keep the backlog document focused on concrete tasks, acceptance criteria, and verification commands.
 
 The first external-contributor batch is now published:
 
@@ -61,71 +58,18 @@ The first external-contributor batch is now published:
 
 [`GOOD_FIRST_ISSUE_DRAFTS.md`](GOOD_FIRST_ISSUE_DRAFTS.md) remains the source draft list and issue-number map for this batch.
 
-## Issue templates proposal
+## Issue and label source of truth
 
-The repo already has a `Memory failure case` issue template. The next useful templates are:
+Use GitHub labels and issue templates as the live source of truth. The stable lanes are:
 
-1. `Backend / adapter proposal`
-   - Runtime or backend name.
-   - Use case and expected memory flow.
-   - Minimal API / event contract.
-   - Privacy and source/provenance handling.
-   - Test plan and maintenance owner.
+- `good first issue`: small, well-scoped work with no architecture decision required;
+- `help wanted`: useful work that needs domain context or maintainer review;
+- `adapter`: agent runtime, wrapper, MCP, or explicit import/export integration;
+- `eval`: fixture, benchmark, metric script, or failure taxonomy;
+- `governance`: consent, privacy, policy, delete/export, conflict lifecycle;
+- `docs`: README, guides, troubleshooting, glossary, architecture explanation.
 
-2. `Good first issue`
-   - Lane: good-first-issue / help-wanted / adapter / eval / governance / docs.
-   - Why it matters.
-   - Files likely touched.
-   - Acceptance checklist.
-   - Suggested commands.
-
-3. `Evaluation fixture`
-   - Failure category.
-   - Redacted input memories / events.
-   - Query or task.
-   - Expected recall / behavior.
-   - Baseline result and gap.
-
-## Labels proposal
-
-### Type labels
-
-- `type:bug` — code behavior is wrong or broken.
-- `type:docs` — documentation, examples, or tutorials.
-- `type:eval` — datasets, metrics, benchmarks, failure taxonomy.
-- `type:feature` — new product capability.
-- `type:adapter` — runtime/backend integration.
-- `type:research` — design exploration requiring evidence before implementation.
-
-### Lane labels
-
-- `lane:retrieval`
-- `lane:adapters`
-- `lane:ui`
-- `lane:evals`
-- `lane:governance`
-- `lane:docs`
-
-### Difficulty labels
-
-- `good first issue` — small, well-scoped, no architecture decision required.
-- `help wanted` — useful but not necessarily beginner-friendly.
-- `needs design` — requires design discussion before code.
-- `blocked` — waiting on another issue, maintainer decision, or external dependency.
-
-### Memory-quality labels
-
-- `memory-case` — concrete memory failure report.
-- `privacy-boundary` — should-not-remember or data minimization concern.
-- `conflict-resolution` — contradictory/stale/superseded memory behavior.
-- `chinese-retrieval` — Chinese or mixed-language retrieval quality.
-- `memory-skill` — Memory × Skill compounding path.
-
-### Priority labels
-
-- `p0-launch` — blocks launch credibility or first-screen conversion.
-- `p1-core` — important for the near-term memory governance loop.
-- `p2-ecosystem` — valuable for community expansion.
+When opening an issue, include the lane, why it matters, likely files, acceptance checklist, and suggested commands. Do not duplicate the full backlog here; update [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md) when the concrete work changes.
 
 ## Contributor path: new memory backends
 

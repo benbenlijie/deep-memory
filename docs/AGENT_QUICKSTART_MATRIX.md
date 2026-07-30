@@ -48,20 +48,22 @@ uv run deep-memory search .deep-memory/deep-memory.db "how do we verify changes?
 
 Note: `uv run deep-memory-mcp` requires the optional MCP dependency. If it fails with `MCP support requires the optional dependency`, run `uv sync --extra mcp` in this checkout and retry.
 
+P1 evidence transcript: [`docs/evidence/p1-cross-agent-smoke-2026-07-23.md`](evidence/p1-cross-agent-smoke-2026-07-23.md).
+
 ## Quick matrix
 
 | Agent | Best first integration | Current status | Read path | Write path |
 | --- | --- | --- | --- | --- |
-| Claude Code | MCP server plus `CLAUDE.md` policy | Design / pending runtime verification | MCP `search` before planning or direct tool call | MCP `add` after tests/review/user confirmation |
-| Hermes | MCP server or explicit JSONL import | JSONL import implemented; MCP config design / pending runtime verification | MCP search before tool-heavy tasks, or profile/plugin recall later | `hermes-import` from explicit facts JSONL |
-| Codex wrapper | `deep-memory codex-run` wrapper | Wrapper MVP implemented; real Codex runtime smoke pending | Wrapper injects bounded `DEEP_MEMORY_CONTEXT` | Wrapper imports explicit `--facts-out` JSONL only after child success |
-| OpenCode / OpenClaw-style wrapper | MCP or pre/post CLI wrapper | Design / pending runtime verification | Pre-run `search` or MCP inside the loop | Explicit JSONL/import or manual `add` after checkpoint |
+| Claude Code | MCP server plus `CLAUDE.md` policy | Design / pending runtime verification; no `claude` CLI on target host in P1 smoke | MCP `search` before planning or direct tool call | MCP `add` after tests/review/user confirmation |
+| Hermes | MCP server or explicit JSONL import | JSONL import implemented; MCP config generation verified; Hermes runtime discovery pending because no `hermes` CLI on target host | MCP search before tool-heavy tasks, or profile/plugin recall later | `hermes-import` from explicit facts JSONL |
+| Codex wrapper | `deep-memory codex-run` wrapper | Wrapper smoke verified without Codex CLI; real Codex runtime smoke pending because no `codex` CLI on target host | Wrapper injects bounded `DEEP_MEMORY_CONTEXT` | Wrapper imports explicit `--facts-out` JSONL only after child success |
+| OpenCode / OpenClaw-style wrapper | MCP or pre/post CLI wrapper | Design / pending runtime verification; no `opencode`/`openclaw` CLI on target host in P1 smoke | Pre-run `search` or MCP inside the loop | Explicit JSONL/import or manual `add` after checkpoint |
 
 ## Claude Code
 
 ### Install method
 
-Design / pending runtime verification:
+Design / pending runtime verification because `claude` was not available on the P1 target host:
 
 ```bash
 uv sync --extra dev --extra mcp
@@ -139,13 +141,19 @@ uv run deep-memory search "$DB" "what should happen before review?"
 
 ### Install method
 
-Design / pending runtime verification for MCP config:
+Verified runnable config generation; full Hermes runtime discovery pending because `hermes` was not available on the P1 target host:
+
+```bash
+uv run deep-memory mcp-config --agent hermes --db .deep-memory/deep-memory.db
+```
+
+Observed snippet shape:
 
 ```yaml
 mcp_servers:
   deep_memory:
-    command: "uv"
-    args: ["--directory", "/absolute/path/to/deep-memory", "run", "deep-memory-mcp"]
+    command: "deep-memory-mcp"
+    args: ["--db", ".deep-memory/deep-memory.db"]
     timeout: 30
 ```
 
@@ -232,7 +240,7 @@ Verified runnable CLI surface:
 uv run deep-memory codex-run --help
 ```
 
-Design / pending real Codex runtime verification:
+Real Codex runtime verification is pending because `codex` was not available on the P1 target host:
 
 ```bash
 uv run deep-memory codex-run \
@@ -258,10 +266,16 @@ MEMORY_DB=.deep-memory/deep-memory.db
 uv run deep-memory search "$MEMORY_DB" "repo conventions for this Codex task"
 ```
 
-Verified wrapper behavior by CLI contract, pending full Codex runtime smoke:
+Verified wrapper behavior without a Codex dependency; pending full Codex runtime smoke:
 
 ```bash
-uv run deep-memory codex-run --db .deep-memory/deep-memory.db --task "Inspect parser conventions" -- echo "child command smoke"
+TMPDIR=$(mktemp -d)
+DB="$TMPDIR/codex.db"
+FACTS="$TMPDIR/codex-facts.jsonl"
+uv run deep-memory init "$DB"
+printf '%s' '{"session_id":"codex_smoke","facts":[{"content":"Wrapper smoke succeeded after child exit","kind":"semantic","importance":0.7,"source":"codex:smoke"}]}' > "$FACTS"
+uv run deep-memory codex-run --db "$DB" --task "Check wrapper smoke" --facts-out "$FACTS" -- true
+uv run deep-memory search "$DB" "wrapper smoke"
 ```
 
 ### Post-task write
@@ -441,4 +455,4 @@ This matrix does not claim that every listed agent has a fully native adapter to
 - MCP server entrypoint exists and requires the `mcp` optional dependency.
 - Hermes explicit facts JSONL import is implemented.
 - `deep-memory codex-run` wrapper MVP is implemented.
-- Claude Code MCP setup, Hermes MCP setup, real Codex runtime smoke, and OpenCode/OpenClaw wrapper flows still need runtime-specific smoke transcripts before being marked fully verified.
+- Claude Code MCP setup, Hermes runtime tool discovery, real Codex runtime smoke, and OpenCode/OpenClaw wrapper flows still need runtime-specific smoke transcripts before being marked fully verified; the P1 target host had none of those runtime CLIs on `PATH`.
