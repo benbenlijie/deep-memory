@@ -1162,7 +1162,7 @@ class DeepMemory:
             effective_mode: RetrievalMode = "hybrid" if vector_available else "fts5"
         else:
             effective_mode = retrieval_mode
-        candidate_limit = max(limit * (5 if effective_mode == "hybrid" else 10), 25)
+        candidate_limit = max(limit * 10, 50)
         if effective_mode == "vector" and not vector_available:
             raise RuntimeError("vector retrieval is unavailable; install deep-memory[vector] or configure an embedding backend")
         if effective_mode == "hybrid" and not vector_available:
