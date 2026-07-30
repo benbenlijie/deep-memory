@@ -1,16 +1,24 @@
 # Reddit drafts
 
+<!-- FOUNDER STORY INSERT POINT: Before posting, insert a condensed personal pain story here (2-3 sentences).
+     See docs/launch/founder-story.md for the canonical draft.
+     r/LocalLLaMA responds to genuine frustration, not product announcements. -->
+
 ## r/LocalLLaMA
 
 Title: Local-first memory layer for coding agents: SQLite, MCP, inspectable records
 
-I have been working on `deep-memory`, a local-first memory layer for AI coding agents.
+The most annoying thing about running multiple AI coding agents: Claude Code learns how a repo should be tested, Codex doesn't know it, Hermes proves a workflow, OpenCode rediscovers it. You teach the same conventions, preferences, and corrections to every agent, every session.
 
-The problem I wanted to isolate is simple: agents forget useful state between runs, and different agents do not share the project conventions they discover. Claude Code might learn how a repo should be tested. Codex or OpenCode will not know it unless the user repeats it. A lot of memory tooling also assumes a hosted service, opaque product memory, or a vector stack before you can even inspect the records.
+I hit this concretely: I was using OpenCode to investigate benchmark submission details, then switching to Codex to prepare the materials and run inference on the server. Codex had no idea what OpenCode had found. I manually relayed everything. After a few rounds, I tried the @-mention-a-local-doc workaround — which worked until I was juggling docs across parallel tasks and couldn't remember which one was current. That's when I started building deep-memory.
 
-`deep-memory` takes the opposite default:
+`deep-memory` is a local memory layer shared across agents: one SQLite file that Claude Code, Codex, OpenCode, and Hermes can all read and write to. Teach once, every agent remembers.
 
-- project-local SQLite DB
+The store is local, inspectable, and deletable — no cloud, no hidden product state, no transcript scraping. Most agent memory today is either hidden state you can't audit, or a hosted vector stack you have to trust. This takes the opposite default.
+
+What's under the hood:
+
+- local SQLite DB, with project/workspace scopes
 - no cloud/API key for the core retrieval path
 - CLI + Python SDK + MCP server
 - wrappers/import paths for Claude Code, Codex, OpenCode-style tools, and Hermes

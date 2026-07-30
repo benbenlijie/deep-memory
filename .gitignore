@@ -13,3 +13,4 @@ __pycache__/
 .spec-workflow/
 .deep-memory/
 .tmp/
+.serena/

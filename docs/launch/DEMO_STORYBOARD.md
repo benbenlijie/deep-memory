@@ -41,7 +41,7 @@ On screen:
 
 Voiceover:
 - “deep-memory is a local-first memory layer for AI agents.”
-- “It stores explicit facts and procedures in a project-local SQLite file.”
+- “It stores explicit facts and procedures in a local SQLite file, with project/workspace scopes.”
 - “Now I add one memory, then search it in a new session.”
 
 Key visual moment:

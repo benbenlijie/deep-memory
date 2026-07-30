@@ -12,9 +12,9 @@ GitHub：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
 快速开始：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md#快速开始
 
-它想解决的问题很具体：AI Agent 经常在跨会话、跨工具时忘记有用上下文。
+如果你同时在用 Claude Code / Codex / OpenCode / Hermes，最大的痛点不是某一个 agent 不行，而是：Claude Code 学到的约定 Codex 不知道，Hermes 跑通的流程 OpenCode 要重新发现。你要给每个 agent 重复教同一套东西。
 
-比如 Claude Code 在一个 repo 里刚学会“提交前要跑 `uv run pytest -q`”，Codex 不知道；Hermes 刚跑通一个工作流，OpenCode 下次也未必知道。最后用户还是要反复解释项目约定、偏好、验证流程和一些长期事实。
+deep-memory 想解决的就是这个：一个本地 SQLite 文件，所有 agent 共享读写。教一次，每个 agent 都记得。而且你能检查、能编辑、能删干净——不偷偷存，不抓聊天记录。
 
 我不太想把这个问题做成“偷偷存所有聊天记录”的系统，所以 `deep-memory` 的默认边界比较窄：
 
@@ -80,11 +80,10 @@ GitHub：https://github.com/benbenlijie/deep-memory
 
 正文：
 
-如果你长期用 AI coding agent，会遇到一个很朴素的问题：它们很强，但很健忘。
+如果你同时在用多个 AI coding agent（Claude Code / Codex / OpenCode / Hermes），最大的痛点不是某一个不够强，而是：Claude Code 学到的上下文，Codex 不知道；Hermes 跑通的流程，OpenCode 也要重新发现。你要不断重复“这个项目怎么测试”“我的输出偏好是什么”“哪些 workflow 已经验证过”。
 
-一个会话里刚确认的项目约定，下一个会话不知道；Claude Code 学到的上下文，Codex 不知道；Hermes 跑通的流程，OpenCode 也无法自动继承。最后用户要不断重复“这个项目怎么测试”“我的输出偏好是什么”“哪些 workflow 已经验证过”。
+`deep-memory` 想把这个问题收敛成一个可控的系统：给 AI Agent 一个本地、跨工具共享、可检视的记忆层。
 
-`deep-memory` 想把这个问题收敛成一个更可控的系统：给 AI Agent 一个本地、可检视、跨工具的记忆层。
 
 项目地址：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md

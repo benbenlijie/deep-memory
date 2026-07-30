@@ -243,8 +243,8 @@ uv run pytest -q
 uv run ruff check .
 ```
 
-## Relationship to `docs/internal/MEMORY_TO_SKILL.md`
+## Relationship to `docs/research/MEMORY_TO_SKILL.md`
 
-`docs/internal/MEMORY_TO_SKILL.md` defines the export boundary: procedural memory can become reviewable candidate markdown.
+`docs/research/MEMORY_TO_SKILL.md` defines the export boundary: procedural memory can become reviewable candidate markdown.
 
 This document defines the next layer: the candidate can become active agent capability only through an explicit activation loop with trigger conditions, evidence, review, installation boundaries, and rollback.

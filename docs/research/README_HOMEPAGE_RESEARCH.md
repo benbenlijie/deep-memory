@@ -568,7 +568,7 @@ Here is a draft that fits the observed OSS pattern while staying honest.
 ```md
 # deep-memory
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](../../README.md) | [简体中文](../../README.zh-CN.md)
 
 > Machine-local memory for all your agents. Inspect what they remember. Decide what they keep.
 
@@ -580,7 +580,7 @@ Store explicit durable facts and procedures in a machine-local SQLite database w
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 
-Quick links: [Quickstart](#quickstart) · [Agent install guide](docs/AGENT_INSTALL_GUIDE.md) · [Safety & privacy](docs/SAFETY_AND_PRIVACY.md) · [Benchmarks & evals](docs/MEMORY_BENCHMARK.md)
+Quick links: [Quickstart](#quickstart) · [Agent install guide](../AGENT_INSTALL_GUIDE.md) · [Safety & privacy](../SAFETY_AND_PRIVACY.md) · [Benchmarks & evals](../MEMORY_BENCHMARK.md)
 
 - Cross-agent continuity: one shared memory layer across multiple agent tools
 - Inspectable by default: read, edit, export, soft-delete, and audit every record

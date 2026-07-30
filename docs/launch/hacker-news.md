@@ -1,16 +1,23 @@
 # Hacker News draft
 
-Title: deep-memory: local-first memory for AI coding agents
+<!-- HN title: A (story-driven). Chosen because the post opens with the founder story,
+     and "I built" mirrors the first paragraph. HN rewards genuine frustration over product announcements. -->
+Title: Show HN: I built a shared memory layer for my coding agents
 
 URL: https://github.com/benbenlijie/deep-memory
 
 Body:
 
-Agents are getting better at individual tasks, but they still forget useful project context between runs.
+<!-- Opening: founder story (real experience) → product one-liner → comparison → features.
+     Story source: docs/launch/founder-story.md. The "felt stupid" moment is the hook. -->
 
-A Claude Code session might learn a repo convention. Codex will not know it. Hermes may prove a workflow and then OpenCode has to rediscover it. Most memory systems also make a tradeoff I do not like: either they are hidden product state, or they require a hosted/vector setup before you can inspect what is happening.
+I was running OpenCode, Codex, and Hermes against the same project. OpenCode would investigate benchmark submission details. Then I’d switch to Codex to prepare the submission materials on the server — and Codex had no idea what the standards were. I had to manually relay everything OpenCode had figured out. After a few rounds, it felt stupid: multiple agents on the same machine, zero shared memory.
 
-`deep-memory` is a small local-first memory layer for AI agents. It stores explicit durable facts, project conventions, and reviewed procedural memories in a project-local SQLite database. The goal is not to scrape transcripts. The goal is to make memory inspectable, portable, auditable, and usable across agents.
+I tried the obvious workaround — save shared context as local docs, then @-mention them in each session. It works for a week. Then you’re the one remembering which doc has which convention, which file is still current. During multi-task parallel work, your brain becomes the memory layer — exactly the burden agents were supposed to offload. That’s when I built deep-memory.
+
+`deep-memory` is a local memory layer shared across agents: one SQLite file that Claude Code, Codex, OpenCode, and Hermes can all read and write to. Teach a convention once, every agent remembers it. The store is local, inspectable, and deletable — no cloud, no hidden product state, no transcript scraping.
+
+Most agent memory today is either hidden state you can't audit, or a hosted vector stack you have to trust. `deep-memory` takes the opposite default: the memory layer belongs to your machine, not to any single agent vendor.
 
 What it does today:
 
