@@ -18,7 +18,7 @@ The store is local, inspectable, and deletable — no cloud, no hidden product s
 
 What's under the hood:
 
-- project-local SQLite DB
+- local SQLite DB, with project/workspace scopes
 - no cloud/API key for the core retrieval path
 - CLI + Python SDK + MCP server
 - wrappers/import paths for Claude Code, Codex, OpenCode-style tools, and Hermes

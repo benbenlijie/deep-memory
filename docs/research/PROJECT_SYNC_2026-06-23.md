@@ -88,7 +88,7 @@ Project implication: release-gate evidence is strong enough for controlled previ
 
 ## Teambition/backlog mapping
 
-Source: `docs/internal/TEAMBITION_BACKLOG.csv` plus current repo state.
+Source: `docs/research/TEAMBITION_BACKLOG.csv` plus current repo state.
 
 | Teambition item | Current status | Evidence / note |
 | --- | --- | --- |
@@ -106,8 +106,8 @@ Source: `docs/internal/TEAMBITION_BACKLOG.csv` plus current repo state.
 - No secrets or raw private transcripts were added to this sync note.
 - Temporary task status was not written as durable memory.
 - The only durable status artifact added by this sync is a project-local evidence summary plus a weekly metrics CSV starter:
-  - `docs/internal/PROJECT_SYNC_2026-06-23.md`
-  - `docs/internal/launch/weekly-metrics/2026-06-23.csv`
+  - `docs/research/PROJECT_SYNC_2026-06-23.md`
+  - `docs/research/launch/weekly-metrics/2026-06-23.csv`
 
 ## Current recommendation
 

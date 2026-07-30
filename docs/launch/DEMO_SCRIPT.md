@@ -23,7 +23,7 @@ The agent looks smart in one session, then becomes a beginner again in the next 
 ## 0:30–1:00 Solution
 
 This is deep-memory: a local-first memory layer for AI agents.
-It stores explicit facts and procedures in a project-local SQLite file.
+It stores explicit facts and procedures in a local SQLite file, with project/workspace scopes.
 
 Watch this.
 I add one memory: “Chinese first, technical terms in English, keep replies concise.”

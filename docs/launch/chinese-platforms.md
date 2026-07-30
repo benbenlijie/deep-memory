@@ -84,7 +84,6 @@ GitHub：https://github.com/benbenlijie/deep-memory
 
 `deep-memory` 想把这个问题收敛成一个可控的系统：给 AI Agent 一个本地、跨工具共享、可检视的记忆层。
 
-`deep-memory` 想把这个问题收敛成一个更可控的系统：给 AI Agent 一个本地、可检视、跨工具的记忆层。
 
 项目地址：https://github.com/benbenlijie/deep-memory
 中文 README：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
