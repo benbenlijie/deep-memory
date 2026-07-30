@@ -500,6 +500,30 @@ Update / Forget 更新或遗忘
 
 ---
 
+## 现在的实际效果（不是 PPT）
+
+这篇文章讲了很多理念。但 deep-memory 不是 PPT 项目，仓库里放了 checked-in 的中文检索评估，任何人可以复现：
+
+| 评估 | 当前结果 | 说明 |
+| --- | --- | --- |
+| Chinese retrieval v1 | 默认 local backend 55/55；可选 jieba 55/55 | 中文 + 中英混合技术词检索 |
+| Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | 多 memory + distractor + stale facts |
+| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | 验证 memory 是否能补足跨会话缺失事实 |
+
+搜索延迟（50k 条记录，单机 SQLite，无索引调优）：
+
+| 模式 | 冷启动 | warm p50 |
+| --- | --- | --- |
+| FTS5 | 126ms | 124ms |
+| Hybrid | 51ms | 55ms |
+| Vector | 1561ms | 52ms |
+
+这些数字不大，更像 regression checks，不是炫技 benchmark。但它们让"中文检索优先"从一个 README 标语变成了一个可验证的声明。
+
+这也是 deep-memory 和很多"看起来很酷"的 memory 项目的区别：**claim 必须能被 check**。
+
+---
+
 ## 最后总结
 
 deep memory 像给一支 AI 船队建了一个共享地图室。
@@ -515,3 +539,24 @@ deep memory 像给一支 AI 船队建了一个共享地图室。
 它会逐渐变成一个长期协作者：知道你是谁，知道项目为什么这样设计，知道哪些路径试过、为什么失败，也知道下一轮应该从哪里开始。
 
 这也许就是 AI Agent 从“单次能力很强”走向“长期系统真正有用”的关键一步。
+
+---
+
+## 项目地址和反馈
+
+如果你在同时用 Claude Code / Codex / OpenCode / Hermes 等 AI coding agent，厌倦了给每个 agent 重复教同一套约定——deep-memory 的跨 agent 共享记忆就是为你做的：
+
+- **GitHub**：https://github.com/benbenlijie/deep-memory
+- **中文 README / Quickstart / Benchmark**：都在仓库里
+- **中文 README 直链**：https://github.com/benbenlijie/deep-memory/blob/main/README.zh-CN.md
+
+项目还是 alpha，更像 controlled preview。如果你觉得“本地优先 + 可审计 + 跨 agent 共享”这个方向是对的，**just star 一下能让更多人看到**，也欢迎提 issue。
+
+我现在最想收集的真实反馈：
+
+1. 什么内容应该允许 agent 自动写入 memory？什么必须用户确认？
+2. memory 的过期、冲突、scope 怎么设计才不会污染上下文？
+3. 中文检索还缺哪些典型 case？（中英混合技术词、项目名、工具名）
+4. 对 Claude Code / Codex / Hermes / OpenCode 这类工具，什么 adapter 形态最自然？
+
+如果你也在做类似的事，或者在用 mem0 / Zep / Letta 但觉得不够“可审计”，欢迎来聊聊。
