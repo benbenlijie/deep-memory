@@ -137,3 +137,32 @@ def test_codex_run_missing_facts_file_is_partial_and_does_not_write_memory(tmp_p
         assert reopened.search("partial task", limit=5) == []
     finally:
         reopened.close()
+
+
+def test_codex_run_malformed_facts_file_is_not_partially_persisted(tmp_path):
+    db = tmp_path / "memory.db"
+    DeepMemory(db).close()
+    facts = tmp_path / "facts.jsonl"
+    child = tmp_path / "malformed_facts.py"
+    child.write_text(
+        """
+from pathlib import Path
+import sys
+Path(sys.argv[1]).write_text('{"facts":[{"content":"Do not partially persist malformed JSONL","kind":"semantic"}]}\\n{bad-json}\\n', encoding="utf-8")
+raise SystemExit(0)
+""".strip(),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["codex-run", "--db", str(db), "--task", "malformed facts", "--facts-out", str(facts), "--", *_python_command(child, facts)],
+    )
+
+    assert result.exit_code != 0
+    assert "invalid codex facts JSONL at line 2" in result.output
+    reopened = DeepMemory(db)
+    try:
+        assert reopened.search("partially persist malformed", limit=5) == []
+    finally:
+        reopened.close()

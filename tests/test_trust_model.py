@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 
 from typer.testing import CliRunner
@@ -611,6 +612,55 @@ def test_search_cli_can_disable_fallback_bucket(tmp_path):
     assert result.exit_code == 0
     assert "cli bucket query high" in result.output
     assert "cli bucket query external" not in result.output
+
+
+def test_search_cli_human_output_includes_audit_fields_once(tmp_path):
+    db = tmp_path / "memory.db"
+    mem = DeepMemory(db)
+    record = mem.add(
+        "search cli audit sample",
+        kind="semantic",
+        source={"agent": "human", "origin_type": "explicit"},
+    )
+    mem.close()
+
+    result = CliRunner().invoke(app, ["search", str(db), "audit sample", "--limit", "1"])
+
+    assert result.exit_code == 0
+    assert record.id in result.output
+    assert "┏" not in result.output
+    assert result.output.count(record.id) == 1
+    assert result.output.count("search cli audit sample") == 1
+    for label in ["id", "score", "scope", "scope_id", "kind", "source", "conflict_status", "content"]:
+        assert label in result.output
+
+
+def test_search_cli_json_outputs_machine_readable_rows(tmp_path):
+    db = tmp_path / "memory.db"
+    mem = DeepMemory(db)
+    record = mem.add(
+        "search cli json sample",
+        kind="semantic",
+        source={"agent": "human", "origin_type": "explicit"},
+    )
+    mem.close()
+
+    result = CliRunner().invoke(app, ["search", str(db), "json sample", "--limit", "1", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == [
+        {
+            "id": record.id,
+            "score": payload[0]["score"],
+            "scope": "workspace",
+            "scope_id": "deep-memory",
+            "kind": "semantic",
+            "source": {"agent": "human", "trust_level": "user", "origin_type": "explicit"},
+            "conflict_status": "active",
+            "content": "search cli json sample",
+        }
+    ]
 
 
 def test_bucket_retrieval_prefers_high_trust_pool_and_fallback_is_optional(tmp_path):

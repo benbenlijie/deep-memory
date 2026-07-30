@@ -46,6 +46,19 @@ def _record_payload(record) -> dict[str, object]:
     return payload
 
 
+def _search_result_payload(result) -> dict[str, object]:
+    return {
+        "id": result.record.id,
+        "score": result.score,
+        "scope": result.record.scope,
+        "scope_id": result.record.scope_id,
+        "kind": result.record.kind,
+        "source": result.record.source,
+        "conflict_status": result.record.conflict_status,
+        "content": result.record.content,
+    }
+
+
 def _trust_audit_payload(entry) -> dict[str, object]:
     return asdict(entry)
 
@@ -400,6 +413,7 @@ def search(
     cross_scope: bool = typer.Option(False, "--all-scopes", help="Search across all scoped memories"),
     allow_fallback: bool = typer.Option(True, "--fallback/--no-fallback", help="Fill results from lower-trust memories when the high-trust bucket is short"),
     embedding_version: int | None = typer.Option(None, "--embedding-version", help="Restrict vector/hybrid search to a specific embedding generation"),
+    json_output: bool = typer.Option(False, "--json", help="Emit stable JSON instead of a Rich table"),
 ) -> None:
     """Search memories."""
     if retrieval_mode not in {"auto", "fts5", "vector", "hybrid"}:
@@ -422,24 +436,27 @@ def search(
         )
     finally:
         mem.close()
-    table = Table("score", "scope", "scope_id", "kind", "content", "source")
-    for result in rows:
-        source = result.record.source
+    payloads = [_search_result_payload(result) for result in rows]
+    if json_output:
+        typer.echo(json.dumps(payloads, ensure_ascii=False))
+        return
+    for payload in payloads:
+        source = payload["source"]
         if not isinstance(source, str):
             source = json.dumps(source, ensure_ascii=False) if source is not None else ""
-        table.add_row(
-            str(result.score),
-            result.record.scope,
-            result.record.scope_id or "",
-            result.record.kind,
-            result.record.content,
-            source,
-        )
-    console.print(table)
-    for result in rows:
         typer.echo(
-            f"score={result.score} scope={result.record.scope} scope_id={result.record.scope_id or ''} "
-            f"kind={result.record.kind} content={result.record.content}"
+            " | ".join(
+                [
+                    f"id={payload['id']}",
+                    f"score={payload['score']}",
+                    f"scope={payload['scope']}",
+                    f"scope_id={payload['scope_id'] or ''}",
+                    f"kind={payload['kind']}",
+                    f"source={source}",
+                    f"conflict_status={payload['conflict_status']}",
+                    f"content={payload['content']}",
+                ]
+            )
         )
 
 
@@ -744,7 +761,10 @@ def codex_run(
     if not command:
         raise typer.BadParameter("child command is required after --")
 
-    result = run_codex_wrapper(db=db, task=task, command=command, facts_out=facts_out, limit=limit)
+    try:
+        result = run_codex_wrapper(db=db, task=task, command=command, facts_out=facts_out, limit=limit)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     suffix = "" if len(result.imported) == 1 else "s"
     console.print(f"imported {len(result.imported)} Codex fact{suffix} into [bold]{db}[/bold]")
     if result.returncode != 0:

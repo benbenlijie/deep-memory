@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .core import DeepMemory, MemoryKind, MemoryRecord, TelemetryReport, _clamp01, _row_to_record, utcnow
+from .privacy import ensure_memory_content_allowed
 
 EDITABLE_KINDS: tuple[MemoryKind, ...] = ("working", "episodic", "semantic", "procedural")
 ASSET_DIR = Path(__file__).resolve().parents[2] / "docs" / "assets"
@@ -92,18 +93,23 @@ def update_memory(
     """Update one memory record from the local inspector."""
     if kind not in EDITABLE_KINDS:
         raise ValueError(f"unsupported memory kind: {kind}")
-    if not content.strip():
+    normalized_content = content.strip()
+    if not normalized_content:
         raise ValueError("memory content cannot be empty")
+    ensure_memory_content_allowed(normalized_content)
     mem = DeepMemory(db)
     now = utcnow()
-    mem.conn.execute(
+    cursor = mem.conn.execute(
         """
         UPDATE memories
         SET content = ?, kind = ?, importance = ?, confidence = ?, source = ?, updated_at = ?
         WHERE id = ?
         """,
-        (content.strip(), kind, _clamp01(importance), _clamp01(confidence), source, now, record_id),
+        (normalized_content, kind, _clamp01(importance), _clamp01(confidence), source, now, record_id),
     )
+    if cursor.rowcount == 0:
+        mem.close()
+        raise KeyError(record_id)
     mem.conn.commit()
     try:
         return mem.get(record_id)

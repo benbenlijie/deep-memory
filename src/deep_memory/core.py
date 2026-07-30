@@ -624,6 +624,8 @@ class DeepMemory:
     ) -> MemoryRecord:
         if not content.strip():
             raise ValueError("memory content cannot be empty")
+        if kind not in {"working", "episodic", "semantic", "procedural"}:
+            raise ValueError(f"unsupported memory kind: {kind}")
         ensure_memory_content_allowed(content)
         importance = _clamp01(importance)
         confidence = _clamp01(confidence)
@@ -1148,15 +1150,19 @@ class DeepMemory:
         embedding_version: int | None = None,
     ) -> list[SearchResult]:
         query = query.strip()
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        if kind is not None and kind not in {"working", "episodic", "semantic", "procedural"}:
+            raise ValueError(f"unsupported memory kind: {kind}")
         if not query:
             return []
         scope, scope_id = _normalize_search_scope(scope=scope, scope_id=scope_id, cross_scope=cross_scope)
-        candidate_limit = max(limit * 10, 50)
         vector_available = self._resolve_embedding_backend() is not None
         if retrieval_mode == "auto":
             effective_mode: RetrievalMode = "hybrid" if vector_available else "fts5"
         else:
             effective_mode = retrieval_mode
+        candidate_limit = max(limit * (5 if effective_mode == "hybrid" else 10), 25)
         if effective_mode == "vector" and not vector_available:
             raise RuntimeError("vector retrieval is unavailable; install deep-memory[vector] or configure an embedding backend")
         if effective_mode == "hybrid" and not vector_available:

@@ -186,3 +186,18 @@ def test_scope_id_preserves_explicit_names_and_supports_cross_scope_search(tmp_p
         assert row.scope_id == str(tmp_path / "repo-a")
     finally:
         mem.close()
+
+
+def test_hermes_import_reports_malformed_jsonl_line_number(tmp_path):
+    session = tmp_path / "session.jsonl"
+    session.write_text(
+        json.dumps({"session_id": "ok", "facts": []}, ensure_ascii=False) + "\n" + "{not-json}\n",
+        encoding="utf-8",
+    )
+
+    try:
+        list(iter_hermes_facts(session))
+    except ValueError as exc:
+        assert "invalid Hermes JSONL at line 2" in str(exc)
+    else:  # pragma: no cover - assertion clarity
+        raise AssertionError("malformed JSONL should be rejected with line number")

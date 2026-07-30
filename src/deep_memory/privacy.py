@@ -21,6 +21,7 @@ SECRET_PATTERN_LABELS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
     ("secrets/credentials", re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_.-]{8,}\b")),
     ("secrets/credentials", re.compile(r"\bsk-[A-Za-z0-9_.-]{8,}\b")),
+    ("secrets/credentials", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
     ("secrets/credentials", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("secrets/credentials", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
 )
