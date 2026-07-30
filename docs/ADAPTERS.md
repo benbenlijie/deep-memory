@@ -293,7 +293,7 @@ uv run deep-memory codex-run \
   -- codex exec "Fix the parser tests and write explicit durable facts to /tmp/deep-memory-codex-facts.jsonl only after tests pass"
 ```
 
-The implemented MVP injects a bounded `DEEP_MEMORY_CONTEXT` block into the child process environment, runs only the command after `--`, and imports only the explicit JSONL file passed by `--facts-out` after the child exits with status 0. It does not read `.env`, token files, raw transcripts, or infer memory from diffs/stdout.
+The implemented MVP injects a bounded `DEEP_MEMORY_CONTEXT` block into the child process environment, runs only the command after `--`, and imports only the explicit JSONL file passed by `--facts-out` after the child exits with status 0. The P1 smoke verified this wrapper behavior with `-- true`; a full Codex CLI runtime smoke remains pending because `codex` was not available on the target host. It does not read `.env`, token files, raw transcripts, or infer memory from diffs/stdout.
 
 ### Risks
 
@@ -354,14 +354,16 @@ deep-memory opencode-run --db .deep-memory/deep-memory.db -- opencode run "Add r
 - Duplicate records across Claude/Codex/OpenCode unless source IDs and idempotency keys are standardized.
 - Hidden background writes would damage user trust; make writes visible and reviewable.
 
+Evidence note: P1 cross-agent smoke evidence is recorded in [`docs/evidence/p1-cross-agent-smoke-2026-07-23.md`](evidence/p1-cross-agent-smoke-2026-07-23.md). Adapter status below separates wrapper/function smoke from full runtime smoke.
+
 ## Compatibility matrix
 
 | Agent | Integration point | Read path | Write path | Permissions | Install UX | Key risk | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Hermes | Native plugin, explicit JSONL import, MCP | Before prompt/context assembly; profile/workspace filters | Explicit facts JSONL or plugin after verified session/loop closure | Profile/project DB path; cross-profile opt-in | `deep-memory hermes-import`; future plugin config | Ephemeral task progress becoming durable memory | MVP import implemented; native plugin planned |
-| Claude Code | MCP, `CLAUDE.md`, hooks/wrapper | MCP `search` before planning or direct tool call | MCP `add` after tests/review/user confirmation | Project/user MCP config; narrow hooks | `claude mcp add deep-memory -- uv ... deep-memory-mcp` | Unverified summaries and private preference leakage | Spec |
-| Codex | Wrapper, MCP, `AGENTS.md` | Prepend wrapper recall block or MCP search | Structured post-run facts with evidence | Repo-scoped DB; env secret scrubbing | `deep-memory codex-run --db ... --task ... --facts-out ... -- codex exec ...` | Writing from failed/partial runs | Wrapper MVP implemented |
-| OpenCode/OpenClaw | MCP, wrapper, JSONL artifact importer | Pre-run recall or MCP inside loop | Checkpoint-based explicit facts/import | Explicit workspace DB mapping | Future `deep-memory opencode-run` helper | Duplicate/hidden writes from long TUI loops | Spec |
+| Hermes | Native plugin, explicit JSONL import, MCP | Before prompt/context assembly; profile/workspace filters | Explicit facts JSONL or plugin after verified session/loop closure | Profile/project DB path; cross-profile opt-in | `deep-memory hermes-import`; `deep-memory mcp-config --agent hermes` snippet verified | Ephemeral task progress becoming durable memory | JSONL import implemented; config generation verified; runtime discovery pending |
+| Claude Code | MCP, `CLAUDE.md`, hooks/wrapper | MCP `search` before planning or direct tool call | MCP `add` after tests/review/user confirmation | Project/user MCP config; narrow hooks | `claude mcp add deep-memory -- uv ... deep-memory-mcp` | Unverified summaries and private preference leakage | Spec; runtime pending because `claude` was unavailable in P1 smoke |
+| Codex | Wrapper, MCP, `AGENTS.md` | Prepend wrapper recall block or MCP search | Structured post-run facts with evidence | Repo-scoped DB; env secret scrubbing | `deep-memory codex-run --db ... --task ... --facts-out ... -- codex exec ...` | Writing from failed/partial runs | Wrapper smoke verified without Codex CLI; full Codex runtime pending |
+| OpenCode/OpenClaw | MCP, wrapper, JSONL artifact importer | Pre-run recall or MCP inside loop | Checkpoint-based explicit facts/import | Explicit workspace DB mapping | Future `deep-memory opencode-run` helper | Duplicate/hidden writes from long TUI loops | Spec; runtime pending because `opencode`/`openclaw` were unavailable in P1 smoke |
 
 ## Suggested implementation sequence
 

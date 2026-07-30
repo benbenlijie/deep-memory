@@ -292,7 +292,7 @@ uv run pytest -q tests/test_markdown_export_pack.py
 - Modify: `README.md`
 - Modify: `README.zh-CN.md`
 - Reference: `docs/AUTOMATIC_LOCAL_AGENT_MEMORY.md`
-- Reference: `docs/README_HOMEPAGE_RESEARCH.md`
+- Reference: `docs/internal/README_HOMEPAGE_RESEARCH.md`
 
 **Important:** Do not overclaim automatic extraction before Tasks 2-5 pass. Phrase automatic extraction as the current iteration / roadmap unless the implementation and tests exist.
 

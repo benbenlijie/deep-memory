@@ -3,9 +3,10 @@
 ## North Star
 
 Make `deep-memory` a useful default for developers who want AI agents to
-remember across sessions — local-first, inspectable, honest about what it
-stores, and workable across Claude Code, Codex, OpenCode, OpenClaw-style
-tools, Hermes, and future MCP-capable agents.
+remember across sessions — a machine-local, inspectable, governed, cross-agent
+memory substrate that is honest about what it stores and workable across
+Claude Code, Codex, OpenCode, OpenClaw-style tools, Hermes, and future
+MCP-capable agents.
 
 This is alpha software. The items below describe direction, not a commitment
 of shipping order. Status of any line item can always be checked against the
@@ -14,11 +15,11 @@ of shipping order. Status of any line item can always be checked against the
 ## Current focus
 
 M+12 is the automatic local cross-agent memory phase: turn the working local
-memory core into the shared memory substrate for one person using many agents.
-The main product wedge is no longer generic memory storage or a cloud/team
-platform. It is: teach once, then Claude Code, Codex, Hermes, OpenCode, and
-future local agents can recall the right project-scoped memory without
-re-teaching or cross-project leakage.
+memory core into a shared machine-local substrate for one person using many
+agents. The main product wedge is no longer generic memory storage or a
+cloud/team platform. It is: teach once, then Claude Code, Codex, Hermes,
+OpenCode, and future local agents can recall the right project-scoped memory
+without re-teaching or cross-project leakage.
 
 See [`AUTOMATIC_LOCAL_AGENT_MEMORY.md`](AUTOMATIC_LOCAL_AGENT_MEMORY.md) for the
 current iteration design and
@@ -76,8 +77,9 @@ lanes.
   facts JSONL; not raw transcript hoarding.
 - Memory → skill generator and Skill × Memory activation, always behind review
   boundaries when memory would become active agent behavior.
-- Shared memory adapters for Hermes, Claude Code, Codex, OpenCode/OpenClaw-style
-  tools.
+- Shared memory adapter specs and smoke paths for Hermes, Claude Code, Codex,
+  OpenCode/OpenClaw-style tools; MCP and wrappers remain the verified path
+  until a native adapter has its own runtime evidence.
 - Memory hygiene reports that summarize new, stale, duplicate, conflicting, and
   risky records without asking the user to approve every memory.
 - Public internal eval/regression lanes, starting with checked-in fixtures before
@@ -103,7 +105,8 @@ what to remember → how to represent → when to recall → when to decay/forge
 ```
 
 The repository should show value in the first 2 minutes, then reveal depth
-through architecture, evals, the local WebUI, and integrations.
+through architecture, evals, the local WebUI, and integrations while keeping
+roadmap items visibly separate from implemented and verified capabilities.
 
 ## Non-goals
 
