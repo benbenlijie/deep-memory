@@ -46,6 +46,42 @@ problem and verify it with evidence.
 See [`NEXT_PHASE_BACKLOG.md`](NEXT_PHASE_BACKLOG.md) for concrete issue-sized
 work items, acceptance criteria, and verification commands.
 
+## Next execution plan: compressed M+12 scope
+
+The next iteration is intentionally small. We will not expand into a large
+adapter, WebUI, language, or benchmark program before the core contracts are
+verified.
+
+Work in this order:
+
+1. **Trust regression pack** — combine GitHub issues #6, #7, and #12:
+   privacy/secret deny cases, workspace scope isolation, and mixed
+   Chinese/English retrieval fixtures.
+2. **CLI JSON contract** — complete issue #4 for the core commands. Keep the
+   output stable, machine-readable, and tested. Human-readable output must
+   keep working.
+3. **Backup and setup mini-pack** — combine issues #11 and #10 into a short,
+   copyable backup/restore runbook and a small troubleshooting guide for the
+   most common local setup failures.
+4. **Hermes smoke transcript** — deliver issue #9 as one real, reproducible
+   Hermes integration example. Do not expand this into a broad adapter matrix.
+
+Each work package must produce code or docs plus repeatable evidence. At
+minimum, run `uv run pytest -q` and `uv run ruff check .` before opening a PR.
+
+### Explicitly deferred
+
+The following are not part of the next iteration:
+
+- WebUI styling (#3); close or leave deferred.
+- WebUI empty-state polish (#8); do only as a small opportunistic fix.
+- New agent adapters (#1); revisit after the CLI JSON contract is stable.
+- Full new-language evaluation (#2); keep only the mixed Chinese/English
+  cases in the trust regression pack.
+- New-domain benchmark (#5); revisit only when real usage shows a gap.
+- Broad launch and community expansion; revisit after the four work packages
+  have evidence.
+
 ## Phases
 
 ### Phase 1 — Foundation memory
