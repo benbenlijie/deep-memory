@@ -12,6 +12,57 @@ uv run ruff check .
 
 For docs-only changes, also run the Markdown link check from [`AGENT_QUICKSTART_MATRIX.md`](AGENT_QUICKSTART_MATRIX.md#verification-commands-for-this-repository).
 
+## Current compressed plan
+
+Do these four work packages first. Do not start the deferred lanes below until
+these packages have code/docs artifacts and passing evidence.
+
+### 1. Trust regression pack — issues #6, #7, #12
+
+- Add privacy/secret deny fixtures.
+- Add workspace scope-isolation regression cases.
+- Add mixed Chinese/English retrieval fixtures.
+- Add one contributor note explaining fixture format and pass criteria.
+
+Done means: secrets are rejected or require confirmation; workspace records do
+not leak across scopes; mixed-language retrieval has deterministic checks.
+
+### 2. CLI JSON contract — issue #4
+
+- Add or complete `--json` for core CLI commands.
+- Define stable success and error shapes.
+- Test JSON output without breaking human-readable output.
+
+Done means: an agent or shell script can parse the core command results without
+scraping prose.
+
+### 3. Backup and setup mini-pack — issues #11, #10
+
+- Add one short export/import example.
+- Show how to verify a restored database.
+- Cover only common setup failures: paths, database initialization, permissions, and MCP/CLI invocation.
+
+Done means: a new user can copy the commands and diagnose the common failures.
+Do not turn this into a large FAQ.
+
+### 4. Hermes smoke transcript — issue #9
+
+- Add one redacted, reproducible Hermes smoke path.
+- Show add/search/recall and scope behavior.
+- Keep this as one integration proof, not a new adapter matrix.
+
+Done means: a maintainer can replay or inspect the transcript and see the
+actual Hermes-to-deep-memory path.
+
+### Deferred for now
+
+- #3 WebUI styling: defer or close.
+- #8 WebUI empty state: only do as a low-cost opportunistic fix.
+- #1 new agent adapter: wait for a stable CLI JSON contract.
+- #2 full new-language eval: keep only mixed Chinese/English cases in #12.
+- #5 new-domain benchmark: wait for real usage evidence.
+- Broad launch/community work: wait until the four packages above are done.
+
 ## Labels to use
 
 - `good first issue`: small, well-scoped, no architecture decision required.
