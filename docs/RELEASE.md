@@ -29,11 +29,11 @@ rm -rf dist/
 uv build
 ```
 
-Expected artifact shape for version `0.1.0`:
+Expected artifact shape for version `0.1.1`:
 
 ```text
-dist/deep_memory-0.1.0.tar.gz
-dist/deep_memory-0.1.0-py3-none-any.whl
+dist/deep_memory-0.1.1.tar.gz
+dist/deep_memory-0.1.1-py3-none-any.whl
 ```
 
 Check that PyPI will accept the distribution metadata:
@@ -58,8 +58,8 @@ Then test installation from TestPyPI in a fresh environment:
 
 ```bash
 uv venv /tmp/deep-memory-testpypi
-/tmp/deep-memory-testpypi/bin/python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ deep-memory==0.1.0
-/tmp/deep-memory-testpypi/bin/deep-memory --help
+/tmp/deep-memory-testpypi/bin/python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ 'deep-memory[mcp]==0.1.1'
+/tmp/deep-memory-testpypi/bin/deep-memory verify-install /tmp/deep-memory-testpypi.db --json
 ```
 
 ## 4. Publish to PyPI
@@ -78,14 +78,14 @@ After PyPI upload completes:
 
 ```bash
 uv venv /tmp/deep-memory-pypi
-/tmp/deep-memory-pypi/bin/python -m pip install deep-memory==0.1.0
-/tmp/deep-memory-pypi/bin/deep-memory --help
+/tmp/deep-memory-pypi/bin/python -m pip install 'deep-memory[mcp]==0.1.1'
+/tmp/deep-memory-pypi/bin/deep-memory verify-install /tmp/deep-memory-pypi.db --json
 ```
 
-Then update `README.md` to replace the source-only install note with the PyPI install path, if this was the first public release.
+Run the real MCP stdio client smoke after both TestPyPI and PyPI installs; importing the module alone is not sufficient.
 
-## Current release blocker
+## Publication boundary
 
-Local build and metadata validation can run without credentials. Publishing is blocked unless the operator provides PyPI/TestPyPI API tokens via `TWINE_PASSWORD` and explicitly approves upload. Do not publish from automation without that approval.
+Local build and metadata validation can run without credentials. Publishing requires separate TestPyPI and PyPI API tokens plus explicit maintainer approval. Do not publish from automation without that approval.
 
-For this release candidate, use [`docs/release-notes-v0.1.0.md`](release-notes-v0.1.0.md) as the draft GitHub Release body and [`docs/release-gate-install-2026-07-02.md`](release-gate-install-2026-07-02.md) as the evidence log.
+For this release candidate, use [`docs/release-notes-v0.1.1.md`](release-notes-v0.1.1.md) as the draft GitHub Release body. Preserve local, TestPyPI, PyPI, and MCP smoke output as the release evidence log.

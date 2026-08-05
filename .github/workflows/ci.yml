@@ -9,14 +9,96 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install
+        run: uv sync --extra dev --extra mcp --python ${{ matrix.python-version }}
+      - name: Test
+        run: uv run pytest
+      - name: Lint
+        run: uv run ruff check src tests
+
+  package:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Set up Python
         run: uv python install 3.12
-      - name: Install
-        run: uv sync --extra dev
-      - name: Test
-        run: uv run pytest
-      - name: Lint
-        run: uv run ruff check src tests
+      - name: Build distributions
+        run: uv build
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+      - name: Install wheel with MCP extra in a clean environment
+        run: |
+          uv venv --python 3.12 /tmp/deep-memory-release-smoke
+          uv pip install --python /tmp/deep-memory-release-smoke/bin/python "$(find dist -name '*.whl')[mcp]"
+      - name: Verify installed CLI
+        run: /tmp/deep-memory-release-smoke/bin/deep-memory verify-install /tmp/deep-memory-release-smoke.db --json
+      - name: Verify installed MCP server through a real client
+        run: |
+          /tmp/deep-memory-release-smoke/bin/python - <<'PY'
+          import asyncio
+          from pathlib import Path
+
+          from mcp import ClientSession, StdioServerParameters
+          from mcp.client.stdio import stdio_client
+
+
+          async def smoke():
+              db = Path("/tmp/deep-memory-release-mcp.db")
+              params = StdioServerParameters(
+                  command="/tmp/deep-memory-release-smoke/bin/deep-memory-mcp",
+                  args=[],
+              )
+              async with stdio_client(params) as (read_stream, write_stream):
+                  async with ClientSession(read_stream, write_stream) as session:
+                      await session.initialize()
+                      tools = await session.list_tools()
+                      names = {tool.name for tool in tools.tools}
+                      assert {"add", "search", "stats"}.issubset(names)
+                      added = await session.call_tool(
+                          "add",
+                          {
+                              "db_path": str(db),
+                              "content": "release wheel MCP smoke",
+                              "scope": "project",
+                              "scope_id": "release-smoke",
+                          },
+                      )
+                      assert added.isError is False
+                      added_record = added.structuredContent
+                      assert added_record is not None
+                      assert added_record["content"] == "release wheel MCP smoke"
+                      searched = await session.call_tool(
+                          "search",
+                          {
+                              "db_path": str(db),
+                              "query": "release wheel MCP smoke",
+                              "scope": "project",
+                              "scope_id": "release-smoke",
+                          },
+                      )
+                      assert searched.isError is False
+                      search_payload = searched.structuredContent
+                      assert search_payload is not None
+                      rows = search_payload["result"]
+                      assert rows
+                      assert rows[0]["record"]["id"] == added_record["id"]
+                      assert rows[0]["record"]["content"] == added_record["content"]
+                      stats = await session.call_tool("stats", {"db_path": str(db)})
+                      assert stats.isError is False
+                      stats_payload = stats.structuredContent
+                      assert stats_payload is not None
+                      assert stats_payload["total"] == 1
+
+
+          asyncio.run(smoke())
+          PY

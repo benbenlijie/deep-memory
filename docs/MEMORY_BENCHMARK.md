@@ -79,7 +79,7 @@ On the checked-in fixture, the benchmark should show:
 - 20 total tasks
 - bilingual coverage: 10 zh, 10 en
 - baseline accuracy: 0/20
-- deep-memory accuracy: at least 16/20 in tests, typically 20/20 with the default retrieval limit
+- deep-memory accuracy: 18/20 in the current checked-in run with the default retrieval limit; tests require at least 16/20
 - positive absolute lift over baseline
 
 The default retrieval limit is intentionally set to 8 because the current MVP uses simple lexical retrieval. If a future tokenizer or embedding retriever improves ranking, this benchmark should become stricter by lowering the limit and adding harder near-miss distractors.

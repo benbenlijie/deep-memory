@@ -49,7 +49,7 @@ Current checked-in evaluations:
 | --- | --- | --- |
 | Chinese retrieval v1 | 55/55 local backend; 55/55 optional `jieba` | Chinese-first memory lookup with mixed technical terms |
 | Chinese retrieval v2 | 20/20 top-1, MRR 1.0 | Multi-memory cases with distractors and stale facts |
-| Memory benchmark v0 | no-memory 0/20; deep-memory usually 20/20 | Whether retrieval recovers missing cross-session facts |
+| Memory benchmark v0 | no-memory 0/20; current deep-memory result 18/20 | Whether retrieval recovers missing cross-session facts |
 
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 GitHub: https://github.com/benbenlijie/deep-memory
@@ -80,7 +80,7 @@ Current checked-in evaluations:
 | --- | --- | --- |
 | Chinese retrieval v1 | 55/55 local backend; 55/55 optional `jieba` | Chinese-first memory lookup with mixed technical terms |
 | Chinese retrieval v2 | 20/20 top-1, MRR 1.0 | Multi-memory cases with distractors and stale facts |
-| Memory benchmark v0 | no-memory 0/20; deep-memory usually 20/20 | Whether retrieval recovers missing cross-session facts |
+| Memory benchmark v0 | no-memory 0/20; current deep-memory result 18/20 | Whether retrieval recovers missing cross-session facts |
 
 Repo: https://github.com/benbenlijie/deep-memory
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart

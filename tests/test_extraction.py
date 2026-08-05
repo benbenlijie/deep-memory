@@ -11,6 +11,11 @@ from deep_memory.extraction import (
 )
 
 
+def test_memory_layer_is_a_string_enum_without_requiring_stdlib_strenum():
+    assert isinstance(MemoryLayer.SEMANTIC, str)
+    assert str(MemoryLayer.SEMANTIC) == "semantic"
+
+
 def test_rule_based_extractor_returns_semantic_and_episodic_memories():
     extraction_input = ConversationExtractionInput(
         conversation_id="conv-001",
