@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
 from typing import Literal
 
 from .core import DeepMemory, MemoryRecord
@@ -9,7 +9,7 @@ from .core import DeepMemory, MemoryRecord
 MessageRole = Literal["system", "user", "assistant", "tool"]
 
 
-class MemoryLayer(StrEnum):
+class MemoryLayer(str, Enum):
     """Extraction-layer names mapped onto the current storage kinds.
 
     L2 semantic records capture durable facts and preferences.
@@ -20,6 +20,9 @@ class MemoryLayer(StrEnum):
     SEMANTIC = "semantic"
     EPISODIC = "episodic"
     PROCEDURAL = "procedural"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 @dataclass(frozen=True)

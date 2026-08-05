@@ -46,7 +46,7 @@ Chinese quality should be measured, not just claimed.
 
 ✅ Chinese retrieval v1: 55/55
 ✅ Chinese retrieval v2: 20/20 top-1
-✅ Memory benchmark: 0/20 → 20/20
+✅ Memory benchmark: 0/20 → 18/20
 
 7/ Some facts expire. Some are superseded. Some should never become global.
 

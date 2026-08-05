@@ -1,6 +1,6 @@
-# Release notes draft — v0.1.0
+# Release notes — v0.1.0
 
-Status: draft. Do not publish to PyPI until a maintainer explicitly approves the upload and provides the required credentials.
+Status: published on 2026-07-02. This file preserves the release notes for the existing public package.
 
 ## Highlights
 

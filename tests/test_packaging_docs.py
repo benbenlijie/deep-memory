@@ -24,7 +24,19 @@ def test_pyproject_exposes_expected_console_scripts_and_package_metadata():
     assert 'name = "deep-memory"' in text
     assert 'deep-memory = "deep_memory.cli:app"' in text
     assert 'deep-memory-mcp = "deep_memory.mcp_server:main"' in text
-    assert 'mcp = ["mcp>=1.0.0"]' in text
+    assert 'mcp = ["mcp>=1.0.0,<2"]' in text
+
+
+def test_pyproject_release_metadata_matches_v0_1_1_contract():
+    text = PYPROJECT.read_text(encoding="utf-8")
+
+    assert 'version = "0.1.1"' in text
+    assert 'requires-python = ">=3.10,<3.13"' in text
+    assert '[project.urls]' in text
+    assert 'Homepage = "https://github.com/benbenlijie/deep-memory"' in text
+    assert 'Repository = "https://github.com/benbenlijie/deep-memory"' in text
+    assert 'Issues = "https://github.com/benbenlijie/deep-memory/issues"' in text
+    assert 'Documentation = "https://github.com/benbenlijie/deep-memory#readme"' in text
 
 
 def test_readme_links_packaging_doc_for_package_install_path():

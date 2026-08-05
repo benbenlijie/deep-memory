@@ -54,7 +54,7 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 | --- | --- | --- |
 | Chinese retrieval v1 | 默认 local backend 55/55；可选 `jieba` 55/55 | 中文 + 中英混合技术词检索 |
 | Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | 多 memory + distractor + stale facts |
-| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | 验证 memory 是否能补足跨会话缺失事实 |
+| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 当前结果 18/20 | 验证 memory 是否能补足跨会话缺失事实 |
 
 我现在更想听真实使用场景里的反馈：
 
@@ -165,7 +165,7 @@ uv run deep-memory webui .deep-memory/deep-memory.db --host 127.0.0.1 --port 876
 | --- | --- | --- |
 | Chinese retrieval v1 | 默认 local backend 55/55；可选 `jieba` 55/55 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl` |
 | Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json` |
-| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | `uv run python benchmarks/memory_benchmark.py` |
+| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 当前结果 18/20 | `uv run python benchmarks/memory_benchmark.py` |
 
 ### 我最关心的反馈
 

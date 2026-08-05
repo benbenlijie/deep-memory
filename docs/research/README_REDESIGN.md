@@ -83,7 +83,7 @@ Compared homepage README patterns from 8 high-star OSS projects relevant to AI, 
 
 6. Evidence
    - Chinese retrieval eval v1: local and jieba 55/55 on checked-in fixture; older plain FTS baseline 24/55.
-   - Memory benchmark v0: 20 bilingual tasks; baseline 0/20; deep-memory should reach at least 16/20 in tests and typically 20/20 with default retrieval limit.
+   - Memory benchmark v0: 20 bilingual tasks; baseline 0/20; current checked-in result 18/20 with the default retrieval limit, with a regression floor of 16/20.
    - Link to docs and commands so readers can reproduce.
 
 7. Integrations

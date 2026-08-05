@@ -28,7 +28,7 @@
     <img src="https://img.shields.io/badge/status-alpha-111111?style=flat-square" alt="Status">
   </p>
 
-  <p><strong>中文检索 eval 75/75 · 双语记忆任务 20/20 · 本地 SQLite · 显式写入 · 有界召回</strong></p>
+  <p><strong>中文检索 eval 75/75 · 双语记忆任务 18/20 · 本地 SQLite · 显式写入 · 有界召回</strong></p>
 
   <p>
     <a href="#快速开始">快速开始</a> ·
@@ -218,7 +218,7 @@ score=...  scope=project  scope_id=deep-memory  kind=semantic  content=用户希
 | --- | --- | --- |
 | Chinese retrieval v1 | 默认本地 backend 55/55；可选 `jieba` 55/55；早期纯 SQLite FTS baseline 为 24/55 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl` |
 | Chinese retrieval v2 | 20 个更难的 multi-memory distractor cases；当前本地 baseline top-1 accuracy 1.0、MRR 1.0 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json` |
-| Memory benchmark v0 | 20 个 bilingual tasks；no-memory baseline 0/20；测试要求至少 16/20，默认 retrieval limit 通常 20/20 | `uv run python benchmarks/memory_benchmark.py` |
+| Memory benchmark v0 | 20 个 bilingual tasks；no-memory baseline 0/20；当前 checked-in 结果为 18/20 | `uv run python benchmarks/memory_benchmark.py` |
 | Test suite | 核心行为、policy、import/export、CLI 路径和回归由 pytest + CI 覆盖 | `uv run pytest -q` |
 
 细节见 [`docs/CHINESE_RETRIEVAL_EVAL.md`](docs/CHINESE_RETRIEVAL_EVAL.md) 和 [`docs/MEMORY_BENCHMARK.md`](docs/MEMORY_BENCHMARK.md)。

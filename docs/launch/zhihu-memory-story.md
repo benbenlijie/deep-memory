@@ -508,7 +508,7 @@ Update / Forget 更新或遗忘
 | --- | --- | --- |
 | Chinese retrieval v1 | 默认 local backend 55/55；可选 jieba 55/55 | 中文 + 中英混合技术词检索 |
 | Chinese retrieval v2 | 20/20 top-1，MRR 1.0 | 多 memory + distractor + stale facts |
-| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 默认通常 20/20 | 验证 memory 是否能补足跨会话缺失事实 |
+| Memory benchmark v0 | no-memory baseline 0/20；deep-memory 当前结果 18/20 | 验证 memory 是否能补足跨会话缺失事实 |
 
 搜索延迟（50k 条记录，单机 SQLite，无索引调优）：
 

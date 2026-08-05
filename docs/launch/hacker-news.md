@@ -54,7 +54,7 @@ Evaluation highlights, with the usual caveat that these are small regression che
 
 - Chinese retrieval v1: 55/55 on the checked-in fixture with the default local backend; optional `jieba` also reaches 55/55.
 - Chinese retrieval v2: 20/20 top-1 on a harder multi-memory fixture with distractors.
-- Memory benchmark v0: 20 bilingual tasks; no-memory baseline 0/20; deep-memory typically 20/20 with the default retrieval limit.
+- Memory benchmark v0: 20 bilingual tasks; no-memory baseline 0/20; current checked-in result 18/20 with the default retrieval limit.
 
 Quickstart: https://github.com/benbenlijie/deep-memory#quickstart
 

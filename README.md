@@ -28,7 +28,7 @@
     <img src="https://img.shields.io/badge/status-alpha-111111?style=flat-square" alt="Status">
   </p>
 
-  <p><strong>75/75 Chinese retrieval evals · 20/20 bilingual memory tasks · local SQLite · explicit writes · scoped recall</strong></p>
+  <p><strong>75/75 Chinese retrieval evals · 18/20 bilingual memory tasks · local SQLite · explicit writes · scoped recall</strong></p>
 
   <p>
     <a href="#quickstart">Quickstart</a> ·
@@ -218,7 +218,7 @@ These checks are intentionally modest. They are internal evals and regressions, 
 | --- | --- | --- |
 | Chinese retrieval v1 | 55/55 with the default local backend; 55/55 with optional `jieba`; earlier plain SQLite FTS baseline was 24/55 | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval.jsonl` |
 | Chinese retrieval v2 | 20/20 harder multi-memory cases with distractors; local top-1 accuracy 1.0 and MRR 1.0 in this checked-in baseline | `uv run python evals/chinese_retrieval_eval.py --data evals/data/zh_memory_retrieval_v2.jsonl --json` |
-| Memory benchmark v0 | 20 bilingual tasks; no-memory baseline 0/20; `deep-memory` should pass at least 16/20 in tests and usually 20/20 with the default retrieval limit | `uv run python benchmarks/memory_benchmark.py` |
+| Memory benchmark v0 | 20 bilingual tasks; no-memory baseline 0/20; current checked-in result 18/20 with the default retrieval limit | `uv run python benchmarks/memory_benchmark.py` |
 | Test suite | Core behavior, policy, import/export, CLI paths, and regressions are covered by pytest and CI | `uv run pytest -q` |
 
 Details: [`docs/CHINESE_RETRIEVAL_EVAL.md`](docs/CHINESE_RETRIEVAL_EVAL.md), [`docs/MEMORY_BENCHMARK.md`](docs/MEMORY_BENCHMARK.md).
